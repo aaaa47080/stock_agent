@@ -34,6 +34,10 @@ INTERVAL_MAP = {
     "1w": "1W",
 }
 
+WS_OPEN_TIMEOUT_SECONDS = 15
+WS_RECONNECT_DELAY_SECONDS = 5
+WS_RECONNECT_DELAY_MAX_SECONDS = 60
+
 
 class OKXWebSocketManager:
     """管理 OKX WebSocket 連接和訂閱"""
@@ -42,7 +46,7 @@ class OKXWebSocketManager:
         self.ws: Optional[websockets.WebSocketClientProtocol] = None
         self.subscriptions: Dict[str, Set[Callable]] = {}  # channel -> callbacks
         self.running = False
-        self.reconnect_delay = 5
+        self.reconnect_delay = WS_RECONNECT_DELAY_SECONDS
         self._connect_task: Optional[asyncio.Task] = None
         self._ping_task: Optional[asyncio.Task] = None
 
@@ -61,6 +65,14 @@ class OKXWebSocketManager:
             symbol = symbol[:-3]
         return f"{symbol}-USDT"
 
+    def _reset_reconnect_delay(self) -> None:
+        self.reconnect_delay = WS_RECONNECT_DELAY_SECONDS
+
+    def _increase_reconnect_delay(self) -> int:
+        delay = self.reconnect_delay
+        self.reconnect_delay = min(delay * 2, WS_RECONNECT_DELAY_MAX_SECONDS)
+        return delay
+
     async def connect(self):
         """建立 WebSocket 連接"""
         if websockets is None:
@@ -74,9 +86,14 @@ class OKXWebSocketManager:
                 logger.info(f"正在連接 OKX WebSocket: {OKX_WS_BUSINESS}")
 
                 async with websockets.connect(
-                    OKX_WS_BUSINESS, ping_interval=20, ping_timeout=10, close_timeout=5
+                    OKX_WS_BUSINESS,
+                    open_timeout=WS_OPEN_TIMEOUT_SECONDS,
+                    ping_interval=20,
+                    ping_timeout=10,
+                    close_timeout=5,
                 ) as ws:
                     self.ws = ws
+                    self._reset_reconnect_delay()
                     logger.info("OKX WebSocket 連接成功")
 
                     # 重新訂閱所有頻道
@@ -91,6 +108,8 @@ class OKXWebSocketManager:
 
             except websockets.exceptions.ConnectionClosed as e:
                 logger.warning(f"WebSocket 連接關閉: {e}")
+            except TimeoutError as e:
+                logger.warning(f"WebSocket opening handshake timed out: {e}")
             except Exception as e:
                 logger.error(f"WebSocket 錯誤: {e}")
             finally:
@@ -99,8 +118,9 @@ class OKXWebSocketManager:
                     self._ping_task.cancel()
 
             if self.running:
-                logger.info(f"{self.reconnect_delay} 秒後重新連接...")
-                await asyncio.sleep(self.reconnect_delay)
+                delay = self._increase_reconnect_delay()
+                logger.info(f"{delay} 秒後重新連接...")
+                await asyncio.sleep(delay)
 
     async def _ping_loop(self):
         """心跳保持連接"""
@@ -285,7 +305,7 @@ class OKXTickerWebSocketManager:
         self.ws: Optional[websockets.WebSocketClientProtocol] = None
         self.subscriptions: Dict[str, Set[Callable]] = {}  # symbol -> callbacks
         self.running = False
-        self.reconnect_delay = 5
+        self.reconnect_delay = WS_RECONNECT_DELAY_SECONDS
         self._connect_task: Optional[asyncio.Task] = None
         self._ping_task: Optional[asyncio.Task] = None
 
@@ -298,6 +318,14 @@ class OKXTickerWebSocketManager:
         elif symbol.endswith("USD") and symbol != "USDC":
             symbol = symbol[:-3]
         return f"{symbol}-USDT"
+
+    def _reset_reconnect_delay(self) -> None:
+        self.reconnect_delay = WS_RECONNECT_DELAY_SECONDS
+
+    def _increase_reconnect_delay(self) -> int:
+        delay = self.reconnect_delay
+        self.reconnect_delay = min(delay * 2, WS_RECONNECT_DELAY_MAX_SECONDS)
+        return delay
 
     async def connect(self):
         """建立 WebSocket 連接"""
@@ -312,9 +340,14 @@ class OKXTickerWebSocketManager:
                 logger.info(f"正在連接 OKX Ticker WebSocket: {OKX_WS_PUBLIC}")
 
                 async with websockets.connect(
-                    OKX_WS_PUBLIC, ping_interval=20, ping_timeout=10, close_timeout=5
+                    OKX_WS_PUBLIC,
+                    open_timeout=WS_OPEN_TIMEOUT_SECONDS,
+                    ping_interval=20,
+                    ping_timeout=10,
+                    close_timeout=5,
                 ) as ws:
                     self.ws = ws
+                    self._reset_reconnect_delay()
                     logger.info("OKX Ticker WebSocket 連接成功")
 
                     # 重新訂閱所有頻道
@@ -329,6 +362,8 @@ class OKXTickerWebSocketManager:
 
             except websockets.exceptions.ConnectionClosed as e:
                 logger.warning(f"Ticker WebSocket 連接關閉: {e}")
+            except TimeoutError as e:
+                logger.warning(f"Ticker WebSocket opening handshake timed out: {e}")
             except Exception as e:
                 logger.error(f"Ticker WebSocket 錯誤: {e}")
             finally:
@@ -337,8 +372,9 @@ class OKXTickerWebSocketManager:
                     self._ping_task.cancel()
 
             if self.running:
-                logger.info(f"{self.reconnect_delay} 秒後重新連接 Ticker WebSocket...")
-                await asyncio.sleep(self.reconnect_delay)
+                delay = self._increase_reconnect_delay()
+                logger.info(f"{delay} 秒後重新連接 Ticker WebSocket...")
+                await asyncio.sleep(delay)
 
     async def _ping_loop(self):
         """心跳保持連接"""

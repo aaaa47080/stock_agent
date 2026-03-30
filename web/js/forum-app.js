@@ -260,6 +260,41 @@ const ForumApp = {
         container.classList.toggle('hidden', !isVisible);
     },
 
+    updateForumStats(posts = []) {
+        const postsEl = document.getElementById('forum-stat-posts');
+        const usersEl = document.getElementById('forum-stat-users');
+        const commentsEl = document.getElementById('forum-stat-comments');
+
+        if (!postsEl || !usersEl || !commentsEl) return;
+
+        // Calculate stats from loaded posts
+        const totalPosts = posts.length;
+        const uniqueUsers = new Set(posts.map(p => p.user_id)).size;
+        const totalComments = posts.reduce((sum, p) => sum + (p.comment_count || 0), 0);
+
+        // Animate number change
+        const animateNumber = (el, target) => {
+            const current = parseInt(el.textContent) || 0;
+            if (current === target) return;
+            const diff = target - current;
+            const steps = 10;
+            const stepValue = diff / steps;
+            let step = 0;
+            const interval = setInterval(() => {
+                step++;
+                el.textContent = Math.round(current + stepValue * step);
+                if (step >= steps) {
+                    el.textContent = target;
+                    clearInterval(interval);
+                }
+            }, 30);
+        };
+
+        animateNumber(postsEl, totalPosts);
+        animateNumber(usersEl, uniqueUsers);
+        animateNumber(commentsEl, totalComments);
+    },
+
     async loadBoards() {
         try {
             const boards = await ForumAPI.getBoards();
@@ -274,10 +309,30 @@ const ForumApp = {
         const container = document.getElementById('post-list');
         if (!container) return [];
 
-        container.innerHTML = `<div class="rounded-2xl border border-white/5 bg-surface/40 py-12 text-center text-textMuted/50">
-            <i class="animate-spin inline-block" data-lucide="loader-2"></i>
-        </div>`;
-        AppUtils.refreshIcons();
+        // Enhanced loading skeleton
+        container.innerHTML = `
+            <div class="space-y-4">
+                ${[1, 2, 3].map(() => `
+                    <div class="rounded-2xl border border-white/5 bg-surface/60 p-5 animate-pulse">
+                        <div class="flex items-start gap-4">
+                            <div class="w-12 h-12 rounded-xl bg-white/5"></div>
+                            <div class="flex-1 space-y-3">
+                                <div class="flex items-center gap-2">
+                                    <div class="h-3 w-20 rounded bg-white/5"></div>
+                                    <div class="h-5 w-16 rounded-full bg-white/5"></div>
+                                </div>
+                                <div class="h-5 w-3/4 rounded bg-white/5"></div>
+                                <div class="h-4 w-full rounded bg-white/5"></div>
+                                <div class="flex gap-2">
+                                    <div class="h-6 w-16 rounded-full bg-white/5"></div>
+                                    <div class="h-6 w-20 rounded-full bg-white/5"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        `;
 
         try {
             const response = await ForumAPI.getPosts(filters);
@@ -288,29 +343,55 @@ const ForumApp = {
             this.setTrendingTagsVisible(posts.length > 0);
 
             if (posts.length === 0) {
-                container.innerHTML =
-                    `<div class="rounded-2xl border border-white/5 bg-surface/40 px-6 py-16 text-center text-textMuted/60 text-sm">${this.getFilteredEmptyStateMessage()}</div>`;
+                container.innerHTML = `
+                    <div class="rounded-3xl border border-white/5 bg-surface/40 px-6 py-16 text-center">
+                        <div class="w-20 h-20 rounded-full bg-surface/60 flex items-center justify-center mx-auto mb-6">
+                            <i data-lucide="inbox" class="w-10 h-10 text-textMuted/40"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-secondary mb-2">尚無文章</h3>
+                        <p class="text-textMuted/60 text-sm mb-6 max-w-xs mx-auto">${this.getFilteredEmptyStateMessage()}</p>
+                        <a href="/static/forum/create.html" class="inline-flex items-center gap-2 bg-primary/15 hover:bg-primary/25 text-primary px-5 py-2.5 rounded-full text-sm font-bold transition">
+                            <i data-lucide="plus" class="w-4 h-4"></i>
+                            成為第一個發文者
+                        </a>
+                    </div>
+                `;
+                this.updateForumStats([]);
                 return [];
             }
 
             // Category color config for post cards
             const CATEGORY_COLORS = {
-                analysis: { avatar: 'bg-amber-400/12 text-amber-300', tag: 'bg-white/5 text-textMuted', badge: 'text-amber-300 border-amber-400/20 bg-amber-400/10' },
-                question: { avatar: 'bg-blue-400/12 text-blue-300', tag: 'bg-white/5 text-textMuted', badge: 'text-blue-300 border-blue-400/20 bg-blue-400/10' },
-                tutorial: { avatar: 'bg-emerald-400/12 text-emerald-300', tag: 'bg-white/5 text-textMuted', badge: 'text-emerald-300 border-emerald-400/20 bg-emerald-400/10' },
-                news:     { avatar: 'bg-violet-400/12 text-violet-300', tag: 'bg-white/5 text-textMuted', badge: 'text-violet-300 border-violet-400/20 bg-violet-400/10' },
-                chat:     { avatar: 'bg-rose-400/12 text-rose-300', tag: 'bg-white/5 text-textMuted', badge: 'text-rose-300 border-rose-400/20 bg-rose-400/10' },
-                insight:  { avatar: 'bg-cyan-400/12 text-cyan-300', tag: 'bg-white/5 text-textMuted', badge: 'text-cyan-300 border-cyan-400/20 bg-cyan-400/10' },
+                analysis: { avatar: 'bg-amber-400/12 text-amber-300', tag: 'bg-amber-400/10 text-amber-300 border border-amber-400/20', badge: 'text-amber-300 border-amber-400/20 bg-amber-400/10', accent: 'from-amber-400/20' },
+                question: { avatar: 'bg-blue-400/12 text-blue-300', tag: 'bg-blue-400/10 text-blue-300 border border-blue-400/20', badge: 'text-blue-300 border-blue-400/20 bg-blue-400/10', accent: 'from-blue-400/20' },
+                tutorial: { avatar: 'bg-emerald-400/12 text-emerald-300', tag: 'bg-emerald-400/10 text-emerald-300 border border-emerald-400/20', badge: 'text-emerald-300 border-emerald-400/20 bg-emerald-400/10', accent: 'from-emerald-400/20' },
+                news:     { avatar: 'bg-violet-400/12 text-violet-300', tag: 'bg-violet-400/10 text-violet-300 border border-violet-400/20', badge: 'text-violet-300 border-violet-400/20 bg-violet-400/10', accent: 'from-violet-400/20' },
+                chat:     { avatar: 'bg-rose-400/12 text-rose-300', tag: 'bg-rose-400/10 text-rose-300 border border-rose-400/20', badge: 'text-rose-300 border-rose-400/20 bg-rose-400/10', accent: 'from-rose-400/20' },
+                insight:  { avatar: 'bg-cyan-400/12 text-cyan-300', tag: 'bg-cyan-400/10 text-cyan-300 border border-cyan-400/20', badge: 'text-cyan-300 border-cyan-400/20 bg-cyan-400/10', accent: 'from-cyan-400/20' },
             };
-            const DEFAULT_COLORS = { avatar: 'bg-primary/10 text-primary', tag: 'bg-white/5 text-textMuted', badge: 'text-primary border-primary/20 bg-primary/10' };
+            const DEFAULT_COLORS = { avatar: 'bg-primary/10 text-primary', tag: 'bg-white/5 text-textMuted border border-white/5', badge: 'text-primary border-primary/20 bg-primary/10', accent: 'from-primary/20' };
 
             posts.forEach((post, index) => {
                 const el = document.createElement('div');
-                el.className =
-                    'group rounded-2xl border border-white/5 bg-surface/60 p-4 sm:p-5 flex items-start gap-4 cursor-pointer transition hover:bg-surface hover:border-white/10';
+                const colors = CATEGORY_COLORS[(post.category || '').toLowerCase()] || DEFAULT_COLORS;
+                const isFirst = index === 0;
+                const isPinned = post.is_pinned || false;
+
+                // Enhanced card design with category accent
+                el.className = `
+                    group relative rounded-2xl border border-white/5 bg-surface/80 p-4 sm:p-5 cursor-pointer transition-all duration-200
+                    hover:bg-surface hover:border-white/10 hover:shadow-xl hover:shadow-primary/5
+                    ${isFirst ? 'ring-1 ring-primary/20' : ''}
+                    ${isPinned ? 'border-warning/30 bg-warning/5' : ''}
+                `;
                 el.onclick = () => this.navigateToPost(post.id);
 
-                const colors = CATEGORY_COLORS[(post.category || '').toLowerCase()] || DEFAULT_COLORS;
+                // Pinned indicator
+                const pinnedBadge = isPinned ? `
+                    <div class="absolute -top-2 -right-2 px-2.5 py-1 rounded-full bg-warning/20 border border-warning/30 text-warning text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
+                        <i data-lucide="pin" class="w-3 h-3"></i>置頂
+                    </div>
+                ` : '';
 
                 // 標籤 HTML
                 let tagsHtml = '';
@@ -334,32 +415,76 @@ const ForumApp = {
                 const safeUsername = typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.username || post.user_id) : post.username || post.user_id;
                 const safeTitle = typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.title || '') : post.title || '';
                 const avatarLetter = (safeUsername[0] || '?').toUpperCase();
-                const categoryShort = (post.category || '').toUpperCase();
+                const categoryShort = (post.category || '').toLowerCase();
+
+                // Gradient accent based on category
+                const gradientAccent = `<div aria-hidden="true" class="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent ${colors.accent.replace('/', '-through ')} to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>`;
 
                 el.innerHTML = `
-                    <div class="w-11 h-11 rounded-xl border border-white/5 bg-background/70 flex items-center justify-center text-sm font-bold ${colors.avatar} flex-shrink-0">${avatarLetter}</div>
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-start justify-between gap-4 mb-2.5">
-                            <div class="min-w-0 flex-1">
-                                <div class="flex items-center gap-2.5 mb-2 flex-wrap">
-                                    <a href="/static/forum/profile.html?id=${post.user_id}" class="text-xs text-textMuted hover:text-primary transition truncate font-semibold" onclick="event.stopPropagation()">${safeUsername}</a>
-                                    <span class="inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${colors.badge} shrink-0">${categoryShort}</span>
-                                </div>
-                                <h3 class="font-bold text-secondary text-[15px] leading-snug sm:text-base">${safeTitle}</h3>
-                            </div>
-                            <span class="text-[10px] text-textMuted/50 shrink-0 mt-0.5">${date}</span>
+                    ${pinnedBadge}
+                    ${gradientAccent}
+                    <div class="flex items-start gap-4">
+                        <!-- Avatar -->
+                        <div class="relative">
+                            <div class="w-12 h-12 rounded-xl border border-white/5 bg-background/70 flex items-center justify-center text-sm font-bold ${colors.avatar} flex-shrink-0 shadow-lg">${avatarLetter}</div>
+                            ${isFirst ? '<div class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-primary border-2 border-surface flex items-center justify-center" title="最新"><i data-lucide="zap" class="w-2.5 h-2.5 text-background"></i></div>' : ''}
                         </div>
-                        ${tagsHtml ? `<div class="flex flex-wrap gap-2 mt-2.5">${tagsHtml}</div>` : ''}
-                        <div class="mt-3.5 flex flex-wrap items-center gap-3 text-xs text-textMuted/60">
-                            <span class="inline-flex items-center gap-2 rounded-full border border-white/5 bg-background/60 px-3.5 py-2 ${pushCount > 0 ? 'text-success/90' : ''}"><i data-lucide="thumbs-up" class="h-3.5 w-3.5"></i><span>${pushCount}</span></span>
-                            <span class="inline-flex items-center gap-2 rounded-full border border-white/5 bg-background/60 px-3.5 py-2 ${booCount > 0 ? 'text-danger/90' : ''}"><i data-lucide="thumbs-down" class="h-3.5 w-3.5"></i><span>${booCount}</span></span>
-                            <span class="inline-flex items-center gap-2 rounded-full border border-white/5 bg-background/60 px-3.5 py-2"><i data-lucide="message-square" class="h-3.5 w-3.5"></i><span>${post.comment_count}</span></span>
-                            ${post.tips_total > 0 ? `<span class="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3.5 py-2 text-primary/90"><i data-lucide="gift" class="h-3.5 w-3.5"></i><span>${post.tips_total} Pi</span></span>` : ''}
+
+                        <!-- Content -->
+                        <div class="flex-1 min-w-0">
+                            <!-- Header Row -->
+                            <div class="flex items-start justify-between gap-3 mb-2">
+                                <div class="min-w-0 flex-1">
+                                    <!-- User & Category -->
+                                    <div class="flex items-center gap-2.5 mb-2 flex-wrap">
+                                        <a href="/static/forum/profile.html?id=${post.user_id}" class="text-xs text-textMuted hover:text-primary transition truncate font-semibold flex items-center gap-1.5" onclick="event.stopPropagation()">
+                                            <span class="w-4 h-4 rounded bg-white/5 flex items-center justify-center text-[8px] font-bold">${avatarLetter}</span>
+                                            ${safeUsername}
+                                        </a>
+                                        <span class="inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${colors.badge} shrink-0">${categoryShort}</span>
+                                    </div>
+                                    <!-- Title -->
+                                    <h3 class="font-bold text-secondary text-[15px] leading-snug sm:text-base group-hover:text-primary transition-colors line-clamp-2">${safeTitle}</h3>
+                                </div>
+                                <span class="text-[10px] text-textMuted/50 shrink-0 mt-0.5 flex items-center gap-1">
+                                    <i data-lucide="clock" class="w-3 h-3"></i>
+                                    ${date}
+                                </span>
+                            </div>
+
+                            <!-- Tags -->
+                            ${tagsHtml ? `<div class="flex flex-wrap gap-2 mb-3">${tagsHtml}</div>` : '<div class="mb-3"></div>'}
+
+                            <!-- Stats Row -->
+                            <div class="flex flex-wrap items-center gap-2.5 text-xs text-textMuted/70">
+                                <span class="inline-flex items-center gap-1.5 rounded-lg border border-white/5 bg-background/60 px-3 py-1.5 ${pushCount > 0 ? 'text-success/80 border-success/20' : ''}">
+                                    <i data-lucide="thumbs-up" class="h-3.5 w-3.5"></i>
+                                    <span class="font-medium">${pushCount}</span>
+                                </span>
+                                <span class="inline-flex items-center gap-1.5 rounded-lg border border-white/5 bg-background/60 px-3 py-1.5 ${booCount > 0 ? 'text-danger/80 border-danger/20' : ''}">
+                                    <i data-lucide="thumbs-down" class="h-3.5 w-3.5"></i>
+                                    <span class="font-medium">${booCount}</span>
+                                </span>
+                                <span class="inline-flex items-center gap-1.5 rounded-lg border border-white/5 bg-background/60 px-3 py-1.5">
+                                    <i data-lucide="message-circle" class="h-3.5 w-3.5"></i>
+                                    <span class="font-medium">${post.comment_count || 0}</span>
+                                </span>
+                                ${post.tips_total > 0 ? `
+                                <span class="inline-flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/10 px-3 py-1.5 text-primary/90">
+                                    <i data-lucide="gift" class="h-3.5 w-3.5"></i>
+                                    <span class="font-medium">${post.tips_total} Pi</span>
+                                </span>
+                                ` : ''}
+                            </div>
                         </div>
                     </div>
                 `;
                 container.appendChild(el);
             });
+
+            // Update stats
+            this.updateForumStats(posts);
+
             AppUtils.refreshIcons();
             return posts;
         } catch (e) {

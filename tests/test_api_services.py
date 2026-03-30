@@ -5,6 +5,7 @@ Tests for API services in api/services.py
 from unittest.mock import patch
 
 import pytest
+from cachetools import TTLCache
 
 from api.services import (
     _build_market_pulse_targets,
@@ -18,6 +19,17 @@ from api.services import (
 
 class TestMarketPulseCache:
     """Tests for Market Pulse cache functions"""
+
+    def test_save_market_pulse_cache_serializes_ttlcache_snapshot(self):
+        """TTLCache should be persisted as a plain dict snapshot."""
+        cache = TTLCache(maxsize=10, ttl=60)
+        cache["BTC"] = {"price": 50000}
+
+        with patch("api.services.set_cache") as mock_set:
+            with patch("api.services.MARKET_PULSE_CACHE", cache):
+                save_market_pulse_cache(silent=True)
+
+        mock_set.assert_called_once_with("MARKET_PULSE", {"BTC": {"price": 50000}})
 
     def test_save_market_pulse_cache_success(self):
         """Test successful cache save"""

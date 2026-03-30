@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
+from langchain_core.tools import StructuredTool
 
 
 def _make_tool(return_value, name="mock_tool"):
@@ -339,3 +340,22 @@ def test_wrapper_records_pending_stat_on_failure():
     assert wrapped.last_stat is not None
     assert wrapped.last_stat["success"] is False
     assert wrapped.last_stat["error_type"] == "RuntimeError"
+
+
+def test_structured_tool_wrapper_exposes_last_stat_without_pydantic_field_error():
+    """StructuredTool wrapping should work without Pydantic field errors."""
+    from core.agents.tool_compactor import wrap_tool
+
+    def small_tool(symbol: str) -> dict:
+        """A small tool that returns the symbol."""
+        return {"symbol": symbol}
+
+    tool = StructuredTool.from_function(small_tool, name="small_tool")
+    wrapped = wrap_tool(tool, owner_id="u1")
+
+    result = wrapped.invoke({"symbol": "BTC"})
+
+    assert result == {"symbol": "BTC"}
+    assert wrapped.last_stat is not None
+    assert wrapped.last_stat["tool_name"] == "small_tool"
+    assert wrapped.last_stat["success"] is True

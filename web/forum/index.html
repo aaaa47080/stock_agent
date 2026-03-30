@@ -55,16 +55,21 @@
     </nav>
 
     <div class="sticky top-[52px] z-40 bg-background/96 backdrop-blur-xl border-b border-white/5">
-        <div class="max-w-3xl mx-auto">
-            <div class="px-4 pt-4 pb-3 flex flex-wrap items-center gap-2 text-xs">
-                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-white/5 text-textMuted border-white/10 font-bold">Community Board</span>
-                <span class="text-textMuted/80">看分析、問問題、分享心得</span>
+        <div class="max-w-3xl mx-auto px-4 pt-4 pb-3">
+            <!-- Header Row -->
+            <div class="flex items-center justify-between mb-3">
+                <span class="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-primary/20 bg-primary/10 text-primary text-xs font-bold">
+                    <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                    Community Board
+                </span>
+                <span class="text-textMuted/60 text-sm hidden sm:block">分享觀點、提問、學習</span>
             </div>
 
-            <div class="mx-4 mb-4 rounded-xl border border-white/5 bg-background/50 p-3">
-                <div class="flex items-center gap-3 overflow-x-auto scroll-x-hide">
+            <!-- Category Filter -->
+            <div class="rounded-2xl border border-white/5 bg-surface/60 p-4 backdrop-blur-sm">
+                <div class="flex items-center gap-3 overflow-x-auto scroll-x-hide pb-2">
                     <select id="category-filter"
-                        class="appearance-none shrink-0 rounded-full border border-white/10 bg-background/70 px-4 py-2.5 text-xs font-bold text-textMuted outline-none transition focus:border-primary/50">
+                        class="appearance-none shrink-0 rounded-xl border border-white/10 bg-background/80 px-4 py-2.5 text-xs font-bold text-textMuted outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/20">
                         <option value="" data-i18n="forum.allCategories">全部分類</option>
                         <option value="analysis" data-i18n="forum.categoryAnalysis">分析</option>
                         <option value="question" data-i18n="forum.categoryQuestion">請問</option>
@@ -73,9 +78,34 @@
                         <option value="chat" data-i18n="forum.categoryChat">閒聊</option>
                         <option value="insight" data-i18n="forum.categoryInsight">心得</option>
                     </select>
-                    <div id="trending-tags" class="flex items-center gap-2.5 min-w-0 overflow-x-auto scroll-x-hide">
+                    <div id="trending-tags" class="flex items-center gap-2.5 min-w-0 overflow-x-auto scroll-x-hide flex-1">
                         <span class="text-xs text-textMuted/40 italic">載入中...</span>
                     </div>
+                </div>
+
+                <!-- Active Filter Indicator -->
+                <div id="active-post-filters" class="hidden mt-3 pt-3 border-t border-white/5 flex items-center gap-2.5">
+                    <span class="text-xs text-textMuted/60">已篩選：</span>
+                    <span id="active-post-filters-text" class="text-xs font-medium text-primary bg-primary/10 px-3.5 py-1.5 rounded-full border border-primary/15"></span>
+                    <button id="clear-post-filters" type="button" class="text-xs text-textMuted hover:text-primary transition p-1 ml-auto">
+                        <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Quick Stats Row -->
+            <div class="mt-4 grid grid-cols-3 gap-3">
+                <div class="rounded-xl border border-white/5 bg-surface/40 p-3 text-center">
+                    <div class="text-lg font-bold text-primary" id="forum-stat-posts">--</div>
+                    <div class="text-[10px] text-textMuted/60 uppercase tracking-wider">文章</div>
+                </div>
+                <div class="rounded-xl border border-white/5 bg-surface/40 p-3 text-center">
+                    <div class="text-lg font-bold text-accent" id="forum-stat-users">--</div>
+                    <div class="text-[10px] text-textMuted/60 uppercase tracking-wider">用戶</div>
+                </div>
+                <div class="rounded-xl border border-white/5 bg-surface/40 p-3 text-center">
+                    <div class="text-lg font-bold text-success" id="forum-stat-comments">--</div>
+                    <div class="text-[10px] text-textMuted/60 uppercase tracking-wider">回覆</div>
                 </div>
             </div>
         </div>
@@ -123,7 +153,7 @@
     <script type="module" src="/static/js/premium.js?v=43"></script>
     <script type="module" src="/static/js/forum-config.js?v=3"></script>
     <script type="module" src="/static/js/forum-api.js?v=2"></script>
-    <script type="module" src="/static/js/forum-app.js?v=5"></script>
+    <script type="module" src="/static/js/forum-app.js?v=6"></script>
     <script type="module" src="/static/js/friends.js?v=5"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {

@@ -41,10 +41,15 @@ from utils.okx_api_connector import OKXAPIConnector
 
 
 # --- Market Pulse Cache Functions ---
+def _market_pulse_cache_snapshot() -> dict:
+    """Return a JSON-serializable snapshot of the market pulse cache."""
+    return dict(MARKET_PULSE_CACHE)
+
+
 def save_market_pulse_cache(silent=True):
     """Save Market Pulse data to DB."""
     try:
-        set_cache("MARKET_PULSE", MARKET_PULSE_CACHE)
+        set_cache("MARKET_PULSE", _market_pulse_cache_snapshot())
         if not silent:
             logger.info("Market Pulse cache saved to DB")
     except Exception as e:
@@ -335,7 +340,7 @@ async def refresh_all_market_pulse_data(target_symbols: List[str] = None):
     async def _safe_save_cache():
         """Helper to save cache securely using lock"""
         async with save_lock:
-            await run_sync(set_cache, "MARKET_PULSE", MARKET_PULSE_CACHE)
+            await run_sync(set_cache, "MARKET_PULSE", _market_pulse_cache_snapshot())
             logger.info("💾 [Batch Save] Saved Market Pulse cache")
 
     async def _tracked_update(sym):
