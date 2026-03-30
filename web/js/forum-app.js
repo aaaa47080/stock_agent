@@ -19,6 +19,7 @@ function normalizePostTags(rawTags) {
 
 const ForumApp = {
     FORUM_HOME_URL: '/static/index.html#forum',
+    FORUM_INDEX_REFRESH_TTL_MS: 60 * 1000,
 
     CATEGORY_PILL_BASE_CLASS:
         'category-pill shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition whitespace-nowrap border',
@@ -101,8 +102,17 @@ const ForumApp = {
     },
 
     bindEvents() {
-        // ?��?事件??��
+        if (this._eventsBound) return;
+        this._eventsBound = true;
+
         document.addEventListener('auth:login', () => this.updateAuthUI());
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState !== 'visible') return;
+            if (document.body.dataset.page) return;
+            if (AppStore.get('activeTab') !== 'forum') return;
+
+            this.refreshIndexPage();
+        });
     },
 
     updateAuthUI() {
@@ -127,21 +137,20 @@ const ForumApp = {
     // Index Page Logic
     // ===========================================
     async initIndexPage() {
-        this.currentTagFilter = '';
+        if (typeof this.currentTagFilter !== 'string') {
+            this.currentTagFilter = '';
+        }
         this.loadBoards();
-        this.loadPosts();
-        this.loadTrendingTags();
+        this.bindIndexPageEvents();
         this.updatePostFiltersUI();
-        this.bindCategoryPills();
+        this.refreshIndexPage({ force: true });
+    },
 
-        // ?��?/篩選??��
+    bindIndexPageEvents() {
         const categoryFilter = document.getElementById('category-filter');
         if (categoryFilter) {
             categoryFilter.onchange = (e) => {
-                this.loadPosts({
-                    category: e.target.value,
-                    tag: this.currentTagFilter || undefined,
-                });
+                this.refreshIndexPage({ force: true });
                 this.updatePostFiltersUI();
             };
         }
@@ -152,11 +161,34 @@ const ForumApp = {
                 this.currentTagFilter = '';
                 const selectFilter = document.getElementById('category-filter');
                 if (selectFilter) selectFilter.value = '';
-                this.loadPosts();
-                this.loadTrendingTags();
+                this.refreshIndexPage({ force: true });
                 this.updatePostFiltersUI();
             };
         }
+    },
+
+    getCurrentPostFilters() {
+        const category = document.getElementById('category-filter')?.value || '';
+        return {
+            category: category || undefined,
+            tag: this.currentTagFilter || undefined,
+        };
+    },
+
+    async refreshIndexPage({ force = false } = {}) {
+        const now = Date.now();
+        if (!force && this.lastIndexRefreshAt && now - this.lastIndexRefreshAt < this.FORUM_INDEX_REFRESH_TTL_MS) {
+            return;
+        }
+
+        const posts = await this.loadPosts(this.getCurrentPostFilters());
+        if (posts.length > 0) {
+            await this.loadTrendingTags();
+        } else {
+            const tagsContainer = document.getElementById('trending-tags');
+            if (tagsContainer) tagsContainer.innerHTML = '';
+        }
+        this.lastIndexRefreshAt = Date.now();
     },
 
     bindCategoryPills() {
@@ -168,10 +200,7 @@ const ForumApp = {
                     categoryFilter.value = nextCategory;
                 }
 
-                this.loadPosts({
-                    category: nextCategory || undefined,
-                    tag: this.currentTagFilter || undefined,
-                });
+                this.refreshIndexPage({ force: true });
                 this.updatePostFiltersUI();
             };
         });
@@ -225,6 +254,12 @@ const ForumApp = {
         return '目前還沒有文章。';
     },
 
+    setTrendingTagsVisible(isVisible) {
+        const container = document.getElementById('trending-tags');
+        if (!container) return;
+        container.classList.toggle('hidden', !isVisible);
+    },
+
     async loadBoards() {
         try {
             const boards = await ForumAPI.getBoards();
@@ -237,7 +272,7 @@ const ForumApp = {
 
     async loadPosts(filters = {}) {
         const container = document.getElementById('post-list');
-        if (!container) return;
+        if (!container) return [];
 
         container.innerHTML = `<div class="rounded-2xl border border-white/5 bg-surface/40 py-12 text-center text-textMuted/50">
             <i class="animate-spin inline-block" data-lucide="loader-2"></i>
@@ -250,11 +285,12 @@ const ForumApp = {
             this.updatePostFiltersUI();
 
             container.innerHTML = '';
+            this.setTrendingTagsVisible(posts.length > 0);
 
             if (posts.length === 0) {
                 container.innerHTML =
                     `<div class="rounded-2xl border border-white/5 bg-surface/40 px-6 py-16 text-center text-textMuted/60 text-sm">${this.getFilteredEmptyStateMessage()}</div>`;
-                return;
+                return [];
             }
 
             // Category color config for post cards
@@ -325,9 +361,11 @@ const ForumApp = {
                 container.appendChild(el);
             });
             AppUtils.refreshIcons();
+            return posts;
         } catch (e) {
             console.error(e);
             container.innerHTML = '<div class="rounded-[28px] border border-danger/20 bg-danger/5 px-6 py-10 text-center text-danger">載入失敗</div>';
+            return [];
         }
     },
 
@@ -340,7 +378,7 @@ const ForumApp = {
             const tags = response.tags || [];
 
             if (tags.length === 0) {
-                container.innerHTML = '<div class="text-xs text-textMuted">No trending tags yet</div>';
+                container.innerHTML = '';
                 return;
             }
 
@@ -364,13 +402,7 @@ const ForumApp = {
                     const nextTag = button.dataset.tag || '';
                     this.currentTagFilter =
                         this.currentTagFilter === nextTag ? '' : nextTag;
-                    const category = document.getElementById('category-filter')?.value || '';
-
-                    this.loadPosts({
-                        category: category || undefined,
-                        tag: this.currentTagFilter || undefined,
-                    });
-                    this.loadTrendingTags();
+                    this.refreshIndexPage({ force: true });
                     this.updatePostFiltersUI();
                 });
             });

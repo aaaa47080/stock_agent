@@ -944,13 +944,33 @@ def get_tips_total_received(user_id: str) -> float:
 
 
 def get_trending_tags(limit: int = 10) -> List[Dict]:
-    """獲取熱門標籤（按最近使用頻率）"""
+    """從現有可見文章聚合熱門標籤，避免吃到已刪文殘留統計。"""
     results = DatabaseBase.query_all(
         """
-        SELECT id, name, post_count, last_used_at
-        FROM tags
-        WHERE last_used_at > NOW() - INTERVAL '7 days' AND post_count > 0
-        ORDER BY post_count DESC
+        WITH expanded_tags AS (
+            SELECT
+                p.id AS post_id,
+                UPPER(BTRIM(tag_name)) AS name,
+                p.created_at
+            FROM posts p
+            CROSS JOIN LATERAL jsonb_array_elements_text(
+                CASE
+                    WHEN p.tags IS NULL OR BTRIM(p.tags) = '' THEN '[]'::jsonb
+                    ELSE p.tags::jsonb
+                END
+            ) AS tag_rows(tag_name)
+            WHERE p.is_hidden = 0
+              AND p.created_at > NOW() - INTERVAL '30 days'
+        )
+        SELECT
+            NULL::integer AS id,
+            name,
+            COUNT(DISTINCT post_id) AS post_count,
+            MAX(created_at) AS last_used_at
+        FROM expanded_tags
+        WHERE name <> ''
+        GROUP BY name
+        ORDER BY COUNT(DISTINCT post_id) DESC, MAX(created_at) DESC
         LIMIT %s
     """,
         (limit,),
@@ -970,13 +990,32 @@ def get_posts_by_tag(tag_name: str, limit: int = 20, offset: int = 0) -> List[Di
 
 
 def search_tags(query: str, limit: int = 10) -> List[Dict]:
-    """搜尋標籤"""
+    """從現有可見文章搜尋標籤。"""
     return DatabaseBase.query_all(
         """
-        SELECT id, name, post_count
-        FROM tags
-        WHERE name LIKE %s
-        ORDER BY post_count DESC
+        WITH expanded_tags AS (
+            SELECT
+                p.id AS post_id,
+                UPPER(BTRIM(tag_name)) AS name,
+                p.created_at
+            FROM posts p
+            CROSS JOIN LATERAL jsonb_array_elements_text(
+                CASE
+                    WHEN p.tags IS NULL OR BTRIM(p.tags) = '' THEN '[]'::jsonb
+                    ELSE p.tags::jsonb
+                END
+            ) AS tag_rows(tag_name)
+            WHERE p.is_hidden = 0
+        )
+        SELECT
+            NULL::integer AS id,
+            name,
+            COUNT(DISTINCT post_id) AS post_count
+        FROM expanded_tags
+        WHERE name <> ''
+          AND name LIKE %s
+        GROUP BY name
+        ORDER BY COUNT(DISTINCT post_id) DESC, MAX(created_at) DESC
         LIMIT %s
     """,
         (f"%{query.upper()}%", limit),
