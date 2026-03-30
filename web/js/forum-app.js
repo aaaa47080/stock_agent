@@ -207,7 +207,7 @@ const ForumApp = {
 
             posts.forEach((post) => {
                 const el = document.createElement('div');
-                el.className = 'overflow-hidden rounded-2xl border border-white/6 bg-[rgba(28,26,36,0.92)] flex cursor-pointer transition hover:brightness-[1.07] hover:border-white/10 active:scale-[0.99]';
+                el.className = 'overflow-hidden rounded-2xl border border-white/5 bg-surface flex cursor-pointer transition hover:border-primary/20 hover:brightness-[1.06] active:scale-[0.99]';
                 el.onclick = () => this.navigateToPost(post.id);
 
                 const colors = CATEGORY_COLORS[(post.category || '').toLowerCase()] || DEFAULT_COLORS;
