@@ -207,7 +207,8 @@ const ForumApp = {
 
             posts.forEach((post) => {
                 const el = document.createElement('div');
-                el.className = 'overflow-hidden rounded-2xl border border-white/5 bg-surface flex cursor-pointer transition hover:border-primary/20 hover:brightness-[1.06] active:scale-[0.99]';
+                // Same card pattern as forex/twstock items
+                el.className = 'group bg-surface border border-white/5 rounded-2xl p-4 flex items-start gap-3 cursor-pointer transition hover:border-primary/30 active:scale-[0.99]';
                 el.onclick = () => this.navigateToPost(post.id);
 
                 const colors = CATEGORY_COLORS[(post.category || '').toLowerCase()] || DEFAULT_COLORS;
@@ -234,28 +235,28 @@ const ForumApp = {
                 const safeUsername = typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.username || post.user_id) : post.username || post.user_id;
                 const safeTitle = typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.title || '') : post.title || '';
                 const avatarLetter = (safeUsername[0] || '?').toUpperCase();
+                const categoryShort = (post.category || '').toUpperCase();
 
+                // Icon box: same w-10 h-10 rounded-xl pattern as HERO_ICON_BOX_CLASS / twstock items
                 el.innerHTML = `
-                    <div class="w-[3px] shrink-0 ${colors.rail}"></div>
-                    <div class="flex-1 min-w-0 px-4 py-3.5">
-                        <div class="flex items-center gap-2 mb-2">
-                            <span class="w-6 h-6 rounded-full ${colors.avatar} text-[11px] font-bold flex items-center justify-center shrink-0">${avatarLetter}</span>
-                            <a href="/static/forum/profile.html?id=${post.user_id}" class="text-[11px] text-textMuted/70 hover:text-primary transition truncate" onclick="event.stopPropagation()">${safeUsername}</a>
-                            <span class="text-[11px] text-textMuted/40 ml-auto shrink-0">${date}</span>
+                    <div class="w-10 h-10 rounded-xl bg-background border border-white/5 flex items-center justify-center text-sm font-bold ${colors.avatar} flex-shrink-0 group-hover:scale-105 transition-transform">${avatarLetter}</div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-start justify-between gap-2 mb-1">
+                            <div class="min-w-0 flex-1">
+                                <div class="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                                    <a href="/static/forum/profile.html?id=${post.user_id}" class="text-xs text-textMuted hover:text-primary transition truncate font-semibold" onclick="event.stopPropagation()">${safeUsername}</a>
+                                    <span class="text-[10px] font-bold uppercase tracking-[0.1em] ${colors.badge} shrink-0">${categoryShort}</span>
+                                </div>
+                                <h3 class="font-bold text-secondary text-sm leading-snug">${safeTitle}</h3>
+                            </div>
+                            <span class="text-[10px] text-textMuted/40 shrink-0 mt-0.5">${date}</span>
                         </div>
-                        <h3 class="font-bold text-[0.95rem] leading-snug text-textMain mb-2">${safeTitle}</h3>
-                        ${tagsHtml ? `<div class="flex flex-wrap gap-1.5 mb-2.5">${tagsHtml}</div>` : ''}
-                        <div class="flex items-center gap-3.5 text-[11px] text-textMuted/50">
-                            <span class="flex items-center gap-1 ${pushCount > 0 ? 'text-success/70' : ''}">
-                                <i data-lucide="thumbs-up" class="h-3 w-3"></i>${pushCount}
-                            </span>
-                            <span class="flex items-center gap-1 ${booCount > 0 ? 'text-danger/70' : ''}">
-                                <i data-lucide="thumbs-down" class="h-3 w-3"></i>${booCount}
-                            </span>
-                            <span class="flex items-center gap-1">
-                                <i data-lucide="message-square" class="h-3 w-3"></i>${post.comment_count}
-                            </span>
-                            ${post.tips_total > 0 ? `<span class="flex items-center gap-1 text-[#d4b693]/60"><i data-lucide="gift" class="h-3 w-3"></i>${post.tips_total}</span>` : ''}
+                        ${tagsHtml ? `<div class="flex flex-wrap gap-1 mt-1.5">${tagsHtml}</div>` : ''}
+                        <div class="flex items-center gap-3 mt-2 text-[10px] text-textMuted/50">
+                            <span class="flex items-center gap-1 ${pushCount > 0 ? 'text-success/70' : ''}"><i data-lucide="thumbs-up" class="h-3 w-3"></i>${pushCount}</span>
+                            <span class="flex items-center gap-1 ${booCount > 0 ? 'text-danger/70' : ''}"><i data-lucide="thumbs-down" class="h-3 w-3"></i>${booCount}</span>
+                            <span class="flex items-center gap-1"><i data-lucide="message-square" class="h-3 w-3"></i>${post.comment_count}</span>
+                            ${post.tips_total > 0 ? `<span class="flex items-center gap-1 text-primary/60"><i data-lucide="gift" class="h-3 w-3"></i>${post.tips_total} Pi</span>` : ''}
                         </div>
                     </div>
                 `;
