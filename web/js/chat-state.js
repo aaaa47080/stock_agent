@@ -8,6 +8,19 @@ window.currentSessionId = null;
 AppStore.set('currentSessionId', null);
 window.chatInitialized = false; // 防止重複初始化
 AppStore.set('chatInitialized', false);
+AppStore.set('isAnalyzing', AppStore.get('isAnalyzing') || false);
+
+if (!Object.getOwnPropertyDescriptor(window, 'isAnalyzing')) {
+    Object.defineProperty(window, 'isAnalyzing', {
+        configurable: true,
+        get() {
+            return !!AppStore.get('isAnalyzing');
+        },
+        set(value) {
+            AppStore.set('isAnalyzing', !!value);
+        },
+    });
+}
 
 // ✅ 效能優化：預先快取 userKey，避免每次 sendMessage 都打後端 API
 let _cachedUserProvider = null;
