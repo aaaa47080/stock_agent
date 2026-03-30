@@ -193,7 +193,7 @@ async def get_debug_logs(admin: dict = Depends(require_admin)):
 # --- 靜態檔案與頁面 ---
 if os.path.exists("web"):
     app.mount("/static", StaticFiles(directory="web"), name="static")
-    for sub in ("js", "css", "img", "assets"):
+    for sub in ("js", "css", "img", "assets", "scam-tracker"):
         sub_dir = os.path.join("web", sub)
         if os.path.isdir(sub_dir):
             app.mount(f"/{sub}", StaticFiles(directory=sub_dir), name=sub)
