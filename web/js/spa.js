@@ -131,13 +131,18 @@ async function executeTabSwitch(tabId, fromPopState = false) {
         el.style.transition = '';
     });
 
+    // Forum tab: redirect to standalone page instead of using embedded component
+    if (tabId === 'forum') {
+        window.location.href = '/static/forum/index.html';
+        return;
+    }
+
     // Dynamic Component Injection (Lazy Loading)
     if (
         [
             'crypto',
             'twstock',
             'usstock',
-            'forum',
             'settings',
             'friends',
             'safety',
