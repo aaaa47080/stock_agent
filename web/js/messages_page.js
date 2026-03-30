@@ -25,9 +25,9 @@ const MessagesPage = {
             if (!AuthManager.isLoggedIn()) {
                 // 使用平滑過渡跳轉
                 if (typeof smoothNavigate === 'function') {
-                    smoothNavigate('/static/forum/index.html');
+                    smoothNavigate('/static/index.html#forum');
                 } else {
-                    window.location.href = '/static/forum/index.html';
+                    window.location.href = '/static/index.html#forum';
                 }
                 return;
             }
@@ -933,12 +933,12 @@ function setupBackButton() {
         backBtn.href = '/static/index.html#friends';
     } else if (source === 'forum') {
         // 從論壇來的
-        backBtn.href = '/static/forum/index.html';
+        backBtn.href = '/static/index.html#forum';
     } else {
         // 使用 referrer 作為後備方案，但不完全依賴它
         const referrer = document.referrer;
         if (referrer && referrer.includes('/static/forum/')) {
-            backBtn.href = '/static/forum/index.html';
+            backBtn.href = '/static/index.html#forum';
         } else {
             // 默認返回主應用的 Friends tab
             backBtn.href = '/static/index.html#friends';

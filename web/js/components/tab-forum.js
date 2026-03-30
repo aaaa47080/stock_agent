@@ -16,18 +16,13 @@ window.Components.forum = `
             </a>
         </div>
 
-        <div class="mb-6 rounded-[32px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-5 shadow-[0_18px_42px_rgba(0,0,0,0.18)]">
-            <div class="flex items-start justify-between gap-4">
-                <div>
-                    <p class="text-[11px] font-bold uppercase tracking-[0.24em] text-primary/70">Community Board</p>
-                    <p class="mt-2 text-sm leading-6 text-textMuted">沿用 crypto 區的柔和圓角和分層感，讓討論流更自然，不要太硬。</p>
-                </div>
-                <div class="hidden rounded-2xl border border-primary/15 bg-primary/10 px-3.5 py-2 text-[11px] font-semibold text-primary md:block">
-                    Crypto Focus
-                </div>
-            </div>
+        <div class="mb-4 flex flex-wrap items-center gap-2 text-xs">
+            <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-white/5 text-textMuted border-white/10 font-bold">Community Board</span>
+            <span class="text-textMuted/80">看分析、問問題、分享心得</span>
+        </div>
 
-            <div class="mt-5 flex items-center gap-3 overflow-x-auto pb-1" style="-ms-overflow-style:none;scrollbar-width:none">
+        <div class="mb-5 rounded-xl border border-white/5 bg-background/50 p-3">
+            <div class="flex items-center gap-3 overflow-x-auto pb-2" style="-ms-overflow-style:none;scrollbar-width:none">
                 <select id="category-filter"
                     class="appearance-none shrink-0 rounded-full border border-white/10 bg-background/70 px-4 py-2.5 text-xs font-bold text-textMuted outline-none transition focus:border-primary/50">
                     <option value="" data-i18n="forum.allCategories">全部分類</option>
@@ -44,14 +39,33 @@ window.Components.forum = `
                     <span class="text-xs text-textMuted/30 italic shrink-0">載入中...</span>
                 </div>
             </div>
+
+            <div id="active-post-filters" class="hidden mt-1 flex items-center gap-2.5 px-1">
+                <span class="text-xs text-textMuted/60">篩選：</span>
+                <span id="active-post-filters-text" class="text-xs font-medium text-primary bg-primary/10 px-3.5 py-1.5 rounded-full border border-primary/15"></span>
+                <button id="clear-post-filters" type="button" class="text-xs text-textMuted hover:text-primary transition">
+                    <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                </button>
+            </div>
         </div>
 
         <div class="${TAB_CONTENT_AREA_CLASS}">
             <div ${SHELL_SCROLL_ATTR} class="absolute inset-0 ${SHELL_SCROLLBAR_CLASS}">
-                <div id="post-list" class="space-y-5 px-1 pb-8">
-                    <div class="${LOADING_PLACEHOLDER_CLASS}">
-                        <i data-lucide="loader-2" class="${LOADER_ICON_CLASS}"></i>
-                        <span data-i18n="common.loading">Loading...</span>
+                <div class="space-y-5 px-1 pb-8">
+                    <div class="${SECTION_HEADER_ROW_CLASS}">
+                        <div class="${PRIMARY_DIVIDER_LEFT_CLASS}"></div>
+                        <h3 class="${SECTION_TITLE_CLASS} text-primary">
+                            <i data-lucide="messages-square" class="w-3 h-3"></i>
+                            <span>最新討論</span>
+                        </h3>
+                        <div class="${PRIMARY_DIVIDER_RIGHT_CLASS}"></div>
+                    </div>
+
+                    <div id="post-list" class="space-y-5">
+                        <div class="${LOADING_PLACEHOLDER_CLASS}">
+                            <i data-lucide="loader-2" class="${LOADER_ICON_CLASS}"></i>
+                            <span data-i18n="common.loading">Loading...</span>
+                        </div>
                     </div>
                 </div>
             </div>

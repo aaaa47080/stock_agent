@@ -86,7 +86,7 @@ function navigateToForum() {
     // 保存當前 tab 到 sessionStorage
     const currentTab = getActiveTab();
     sessionStorage.setItem('returnToTab', currentTab);
-    smoothNavigate('/static/forum/index.html');
+    smoothNavigate('/static/index.html#forum');
 }
 window.navigateToForum = navigateToForum;
 
@@ -131,12 +131,6 @@ async function executeTabSwitch(tabId, fromPopState = false) {
         el.style.transition = '';
     });
 
-    // Forum tab: redirect to standalone page instead of using embedded component
-    if (tabId === 'forum') {
-        window.location.href = '/static/forum/index.html';
-        return;
-    }
-
     // Dynamic Component Injection (Lazy Loading)
     if (
         [
@@ -145,6 +139,7 @@ async function executeTabSwitch(tabId, fromPopState = false) {
             'usstock',
             'settings',
             'friends',
+            'forum',
             'safety',
             'admin',
         ].includes(tabId)

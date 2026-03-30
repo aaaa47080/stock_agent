@@ -29,7 +29,7 @@
     <!-- Navbar -->
     <nav class="sticky top-0 z-50 bg-[#111017]/94 backdrop-blur-xl border-b border-white/5 px-4 py-3">
         <div class="max-w-5xl mx-auto flex items-center justify-between">
-            <a href="/static/forum/index.html" id="forum-dashboard-back-link"
+            <a href="/static/index.html#forum" id="forum-dashboard-back-link"
                 class="flex items-center gap-2 text-secondary font-bold hover:text-primary transition">
                 <i data-lucide="arrow-left" class="w-5 h-5"></i>
                 <span>Back to Forum</span>
@@ -65,7 +65,7 @@
                 <div>
                     <p class="text-[11px] uppercase tracking-[0.22em] text-primary/70">Overview</p>
                     <h1 class="mt-1 text-2xl font-extrabold text-textMain">你的 Forum 工作台</h1>
-                    <p class="mt-2 max-w-2xl text-sm leading-6 text-textMuted">把發文、收到的打賞、近期內容與帳戶狀態集中在同一頁。風格上改成更像社群中心，而不是後台控制板。</p>
+                    <p class="mt-2 max-w-2xl text-sm leading-6 text-textMuted">集中查看你的文章、打賞與帳戶狀態。</p>
                 </div>
                 <a href="/static/forum/create.html" class="inline-flex items-center justify-center gap-2 rounded-2xl border border-primary/15 bg-primary/12 px-4 py-3 text-sm font-bold text-primary transition hover:bg-primary/18">
                     <i data-lucide="plus" class="w-4 h-4"></i>
@@ -231,7 +231,7 @@
         document.addEventListener('DOMContentLoaded', async () => {
             const backLink = document.getElementById('forum-dashboard-back-link');
             if (backLink) {
-                backLink.href = sessionStorage.getItem('forumBackHref') || '/static/forum/index.html';
+                backLink.href = sessionStorage.getItem('forumBackHref') || '/static/index.html#forum';
             }
 
             // 1. Initialize Auth

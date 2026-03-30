@@ -560,25 +560,12 @@
             }
         }
 
-        // 智能返回函数 - 优先返回来源页，否则返回论坛首页
+        // 統一返回主站 forum 分頁，避免出現多個 forum 首頁入口
         function handleProfileBack() {
-            const referrer = document.referrer;
-            const currentHost = window.location.host;
-
-            // 如果有有效的来源页且是同一域名
-            if (referrer && referrer.includes(currentHost) && !referrer.includes('profile.html')) {
-                if (typeof smoothNavigate === 'function') {
-                    smoothNavigate(referrer);
-                } else {
-                    history.back();
-                }
+            if (typeof smoothNavigate === 'function') {
+                smoothNavigate('/static/index.html#forum');
             } else {
-                // 否则返回论坛首页
-                if (typeof smoothNavigate === 'function') {
-                    smoothNavigate('/static/forum/index.html');
-                } else {
-                    window.location.href = '/static/forum/index.html';
-                }
+                window.location.href = '/static/index.html#forum';
             }
         }
 

@@ -18,22 +18,45 @@ function normalizePostTags(rawTags) {
 }
 
 const ForumApp = {
+    FORUM_HOME_URL: '/static/index.html#forum',
+
+    CATEGORY_PILL_BASE_CLASS:
+        'category-pill shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition whitespace-nowrap border',
+
+    CATEGORY_PILL_VARIANTS: {
+        '': {
+            active: 'border-[#d4b693]/50 bg-[#d4b693]/15 text-[#d4b693]',
+            inactive: 'border-white/8 text-textMuted hover:border-primary/40 hover:text-primary hover:bg-primary/10',
+        },
+        analysis: {
+            active: 'border-amber-400/50 bg-amber-400/10 text-amber-400',
+            inactive: 'border-white/8 text-textMuted hover:border-amber-400/50 hover:text-amber-400 hover:bg-amber-400/10',
+        },
+        question: {
+            active: 'border-blue-400/50 bg-blue-400/10 text-blue-400',
+            inactive: 'border-white/8 text-textMuted hover:border-blue-400/50 hover:text-blue-400 hover:bg-blue-400/10',
+        },
+        tutorial: {
+            active: 'border-emerald-400/50 bg-emerald-400/10 text-emerald-400',
+            inactive: 'border-white/8 text-textMuted hover:border-emerald-400/50 hover:text-emerald-400 hover:bg-emerald-400/10',
+        },
+        news: {
+            active: 'border-violet-400/50 bg-violet-400/10 text-violet-400',
+            inactive: 'border-white/8 text-textMuted hover:border-violet-400/50 hover:text-violet-400 hover:bg-violet-400/10',
+        },
+        chat: {
+            active: 'border-rose-400/50 bg-rose-400/10 text-rose-400',
+            inactive: 'border-white/8 text-textMuted hover:border-rose-400/50 hover:text-rose-400 hover:bg-rose-400/10',
+        },
+        insight: {
+            active: 'border-cyan-400/50 bg-cyan-400/10 text-cyan-400',
+            inactive: 'border-white/8 text-textMuted hover:border-cyan-400/50 hover:text-cyan-400 hover:bg-cyan-400/10',
+        },
+    },
+
     rememberForumReturnTarget() {
-        const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
         try {
-            if (current.includes('/static/forum/post.html')) return;
-
-            if (current.includes('/static/forum/index.html')) {
-                sessionStorage.setItem('forumBackHref', '/static/forum/index.html');
-                return;
-            }
-
-            if (current.includes('/static/index.html')) {
-                sessionStorage.setItem('forumBackHref', '/static/index.html#forum');
-                return;
-            }
-
-            sessionStorage.setItem('forumBackHref', current || '/static/forum/index.html');
+            sessionStorage.setItem('forumBackHref', this.FORUM_HOME_URL);
         } catch (e) {
             console.warn('[Forum] Failed to remember return target:', e);
         }
@@ -109,33 +132,73 @@ const ForumApp = {
         this.loadPosts();
         this.loadTrendingTags();
         this.updatePostFiltersUI();
+        this.bindCategoryPills();
 
         // ?��?/篩選??��
-        document.getElementById('category-filter')?.addEventListener('change', (e) => {
-            this.loadPosts({
-                category: e.target.value,
-                tag: this.currentTagFilter || undefined,
-            });
-            this.updatePostFiltersUI();
+        const categoryFilter = document.getElementById('category-filter');
+        if (categoryFilter) {
+            categoryFilter.onchange = (e) => {
+                this.loadPosts({
+                    category: e.target.value,
+                    tag: this.currentTagFilter || undefined,
+                });
+                this.updatePostFiltersUI();
+            };
+        }
+
+        const clearPostFilters = document.getElementById('clear-post-filters');
+        if (clearPostFilters) {
+            clearPostFilters.onclick = () => {
+                this.currentTagFilter = '';
+                const selectFilter = document.getElementById('category-filter');
+                if (selectFilter) selectFilter.value = '';
+                this.loadPosts();
+                this.loadTrendingTags();
+                this.updatePostFiltersUI();
+            };
+        }
+    },
+
+    bindCategoryPills() {
+        document.querySelectorAll('.category-pill').forEach((button) => {
+            button.onclick = () => {
+                const nextCategory = button.dataset.category || '';
+                const categoryFilter = document.getElementById('category-filter');
+                if (categoryFilter) {
+                    categoryFilter.value = nextCategory;
+                }
+
+                this.loadPosts({
+                    category: nextCategory || undefined,
+                    tag: this.currentTagFilter || undefined,
+                });
+                this.updatePostFiltersUI();
+            };
         });
-        document.getElementById('clear-post-filters')?.addEventListener('click', () => {
-            this.currentTagFilter = '';
-            const categoryFilter = document.getElementById('category-filter');
-            if (categoryFilter) categoryFilter.value = '';
-            this.loadPosts();
-            this.loadTrendingTags();
-            this.updatePostFiltersUI();
+    },
+
+    updateCategoryPillsUI(category = '') {
+        document.querySelectorAll('.category-pill').forEach((button) => {
+            const buttonCategory = button.dataset.category || '';
+            const variant =
+                this.CATEGORY_PILL_VARIANTS[buttonCategory] || this.CATEGORY_PILL_VARIANTS[''];
+            const isActive = buttonCategory === category;
+            button.className = `${this.CATEGORY_PILL_BASE_CLASS} ${
+                isActive ? variant.active : variant.inactive
+            }`;
         });
     },
 
     updatePostFiltersUI() {
         const activeFilters = document.getElementById('active-post-filters');
         const activeFiltersText = document.getElementById('active-post-filters-text');
+        const category = document.getElementById('category-filter')?.value || '';
+        this.updateCategoryPillsUI(category);
+
         if (!activeFilters || !activeFiltersText) return;
 
-        const category = document.getElementById('category-filter')?.value || '';
         const parts = [];
-        if (category) parts.push(`Category: ${category}`);
+        if (category) parts.push(`分類：${category}`);
         if (this.currentTagFilter) parts.push(`#${this.currentTagFilter}`);
 
         if (parts.length === 0) {
@@ -151,15 +214,15 @@ const ForumApp = {
     getFilteredEmptyStateMessage() {
         const category = document.getElementById('category-filter')?.value || '';
         if (this.currentTagFilter && category) {
-            return `No posts found for #${this.currentTagFilter} in ${category}.`;
+            return `找不到 #${this.currentTagFilter} 且屬於 ${category} 的文章。`;
         }
         if (this.currentTagFilter) {
-            return `No posts found for #${this.currentTagFilter}.`;
+            return `找不到 #${this.currentTagFilter} 相關文章。`;
         }
         if (category) {
-            return `No posts found in ${category}.`;
+            return `目前沒有 ${category} 分類文章。`;
         }
-        return 'No posts yet.';
+        return '目前還沒有文章。';
     },
 
     async loadBoards() {
@@ -176,7 +239,7 @@ const ForumApp = {
         const container = document.getElementById('post-list');
         if (!container) return;
 
-        container.innerHTML = `<div class="py-12 text-center text-textMuted/50">
+        container.innerHTML = `<div class="rounded-2xl border border-white/5 bg-surface/40 py-12 text-center text-textMuted/50">
             <i class="animate-spin inline-block" data-lucide="loader-2"></i>
         </div>`;
         AppUtils.refreshIcons();
@@ -190,26 +253,25 @@ const ForumApp = {
 
             if (posts.length === 0) {
                 container.innerHTML =
-                    `<div class="py-16 text-center text-textMuted/50 text-sm">${this.getFilteredEmptyStateMessage()}</div>`;
+                    `<div class="rounded-2xl border border-white/5 bg-surface/40 px-6 py-16 text-center text-textMuted/60 text-sm">${this.getFilteredEmptyStateMessage()}</div>`;
                 return;
             }
 
             // Category color config for post cards
             const CATEGORY_COLORS = {
-                analysis: { rail: 'bg-amber-400',   avatar: 'bg-amber-400/20 text-amber-400',   tag: 'bg-amber-400/10 text-amber-400/80',   badge: 'text-amber-400/90', glow: 'bg-amber-400/12' },
-                question: { rail: 'bg-blue-400',    avatar: 'bg-blue-400/20 text-blue-400',     tag: 'bg-blue-400/10 text-blue-400/80',     badge: 'text-blue-400/90', glow: 'bg-blue-400/12' },
-                tutorial: { rail: 'bg-emerald-400', avatar: 'bg-emerald-400/20 text-emerald-400',tag: 'bg-emerald-400/10 text-emerald-400/80',badge: 'text-emerald-400/90', glow: 'bg-emerald-400/12' },
-                news:     { rail: 'bg-violet-400',  avatar: 'bg-violet-400/20 text-violet-400', tag: 'bg-violet-400/10 text-violet-400/80', badge: 'text-violet-400/90', glow: 'bg-violet-400/12' },
-                chat:     { rail: 'bg-rose-400',    avatar: 'bg-rose-400/20 text-rose-400',     tag: 'bg-rose-400/10 text-rose-400/80',     badge: 'text-rose-400/90', glow: 'bg-rose-400/12' },
-                insight:  { rail: 'bg-cyan-400',    avatar: 'bg-cyan-400/20 text-cyan-400',     tag: 'bg-cyan-400/10 text-cyan-400/80',     badge: 'text-cyan-400/90', glow: 'bg-cyan-400/12' },
+                analysis: { avatar: 'bg-amber-400/12 text-amber-300', tag: 'bg-white/5 text-textMuted', badge: 'text-amber-300 border-amber-400/20 bg-amber-400/10' },
+                question: { avatar: 'bg-blue-400/12 text-blue-300', tag: 'bg-white/5 text-textMuted', badge: 'text-blue-300 border-blue-400/20 bg-blue-400/10' },
+                tutorial: { avatar: 'bg-emerald-400/12 text-emerald-300', tag: 'bg-white/5 text-textMuted', badge: 'text-emerald-300 border-emerald-400/20 bg-emerald-400/10' },
+                news:     { avatar: 'bg-violet-400/12 text-violet-300', tag: 'bg-white/5 text-textMuted', badge: 'text-violet-300 border-violet-400/20 bg-violet-400/10' },
+                chat:     { avatar: 'bg-rose-400/12 text-rose-300', tag: 'bg-white/5 text-textMuted', badge: 'text-rose-300 border-rose-400/20 bg-rose-400/10' },
+                insight:  { avatar: 'bg-cyan-400/12 text-cyan-300', tag: 'bg-white/5 text-textMuted', badge: 'text-cyan-300 border-cyan-400/20 bg-cyan-400/10' },
             };
-            const DEFAULT_COLORS = { rail: 'bg-[#d4b693]', avatar: 'bg-[#d4b693]/20 text-[#d4b693]', tag: 'bg-[#d4b693]/10 text-[#d4b693]/80', badge: 'text-[#d4b693]/90', glow: 'bg-primary/10' };
+            const DEFAULT_COLORS = { avatar: 'bg-primary/10 text-primary', tag: 'bg-white/5 text-textMuted', badge: 'text-primary border-primary/20 bg-primary/10' };
 
-            posts.forEach((post) => {
+            posts.forEach((post, index) => {
                 const el = document.createElement('div');
-                // Same card pattern as forex/twstock items
                 el.className =
-                    'group relative overflow-hidden rounded-[30px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] p-5 sm:p-6 flex items-start gap-4 cursor-pointer transition duration-300 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_18px_44px_rgba(0,0,0,0.22)] active:scale-[0.99]';
+                    'group rounded-2xl border border-white/5 bg-surface/60 p-4 sm:p-5 flex items-start gap-4 cursor-pointer transition hover:bg-surface hover:border-white/10';
                 el.onclick = () => this.navigateToPost(post.id);
 
                 const colors = CATEGORY_COLORS[(post.category || '').toLowerCase()] || DEFAULT_COLORS;
@@ -238,17 +300,14 @@ const ForumApp = {
                 const avatarLetter = (safeUsername[0] || '?').toUpperCase();
                 const categoryShort = (post.category || '').toUpperCase();
 
-                // Icon box: same w-10 h-10 rounded-xl pattern as HERO_ICON_BOX_CLASS / twstock items
                 el.innerHTML = `
-                    <div class="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white/12 to-transparent"></div>
-                    <div class="pointer-events-none absolute -right-10 -top-10 h-24 w-24 rounded-full ${colors.glow} blur-3xl opacity-60"></div>
-                    <div class="w-12 h-12 rounded-2xl bg-background/80 border border-white/6 flex items-center justify-center text-sm font-bold ${colors.avatar} flex-shrink-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] group-hover:scale-105 transition-transform">${avatarLetter}</div>
+                    <div class="w-11 h-11 rounded-xl border border-white/5 bg-background/70 flex items-center justify-center text-sm font-bold ${colors.avatar} flex-shrink-0">${avatarLetter}</div>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-start justify-between gap-4 mb-2.5">
                             <div class="min-w-0 flex-1">
                                 <div class="flex items-center gap-2.5 mb-2 flex-wrap">
                                     <a href="/static/forum/profile.html?id=${post.user_id}" class="text-xs text-textMuted hover:text-primary transition truncate font-semibold" onclick="event.stopPropagation()">${safeUsername}</a>
-                                    <span class="inline-flex items-center rounded-full border border-white/8 bg-background/60 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${colors.badge} shrink-0">${categoryShort}</span>
+                                    <span class="inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${colors.badge} shrink-0">${categoryShort}</span>
                                 </div>
                                 <h3 class="font-bold text-secondary text-[15px] leading-snug sm:text-base">${safeTitle}</h3>
                             </div>
@@ -256,10 +315,10 @@ const ForumApp = {
                         </div>
                         ${tagsHtml ? `<div class="flex flex-wrap gap-2 mt-2.5">${tagsHtml}</div>` : ''}
                         <div class="mt-3.5 flex flex-wrap items-center gap-3 text-xs text-textMuted/60">
-                            <span class="inline-flex items-center gap-2 rounded-full border border-white/8 bg-background/60 px-3.5 py-2 ${pushCount > 0 ? 'text-success/90' : ''}"><i data-lucide="thumbs-up" class="h-3.5 w-3.5"></i><span>${pushCount}</span></span>
-                            <span class="inline-flex items-center gap-2 rounded-full border border-white/8 bg-background/60 px-3.5 py-2 ${booCount > 0 ? 'text-danger/90' : ''}"><i data-lucide="thumbs-down" class="h-3.5 w-3.5"></i><span>${booCount}</span></span>
-                            <span class="inline-flex items-center gap-2 rounded-full border border-white/8 bg-background/60 px-3.5 py-2"><i data-lucide="message-square" class="h-3.5 w-3.5"></i><span>${post.comment_count}</span></span>
-                            ${post.tips_total > 0 ? `<span class="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/12 px-3.5 py-2 text-primary/90"><i data-lucide="gift" class="h-3.5 w-3.5"></i><span>${post.tips_total} Pi</span></span>` : ''}
+                            <span class="inline-flex items-center gap-2 rounded-full border border-white/5 bg-background/60 px-3.5 py-2 ${pushCount > 0 ? 'text-success/90' : ''}"><i data-lucide="thumbs-up" class="h-3.5 w-3.5"></i><span>${pushCount}</span></span>
+                            <span class="inline-flex items-center gap-2 rounded-full border border-white/5 bg-background/60 px-3.5 py-2 ${booCount > 0 ? 'text-danger/90' : ''}"><i data-lucide="thumbs-down" class="h-3.5 w-3.5"></i><span>${booCount}</span></span>
+                            <span class="inline-flex items-center gap-2 rounded-full border border-white/5 bg-background/60 px-3.5 py-2"><i data-lucide="message-square" class="h-3.5 w-3.5"></i><span>${post.comment_count}</span></span>
+                            ${post.tips_total > 0 ? `<span class="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3.5 py-2 text-primary/90"><i data-lucide="gift" class="h-3.5 w-3.5"></i><span>${post.tips_total} Pi</span></span>` : ''}
                         </div>
                     </div>
                 `;
@@ -268,7 +327,7 @@ const ForumApp = {
             AppUtils.refreshIcons();
         } catch (e) {
             console.error(e);
-            container.innerHTML = '<div class="text-center py-10 text-danger">載入失敗</div>';
+            container.innerHTML = '<div class="rounded-[28px] border border-danger/20 bg-danger/5 px-6 py-10 text-center text-danger">載入失敗</div>';
         }
     },
 
@@ -285,24 +344,16 @@ const ForumApp = {
                 return;
             }
 
-            const TAG_COLORS = [
-                'text-[#d4b693] bg-[#d4b693]/10 border-[#d4b693]/25',
-                'text-violet-400 bg-violet-400/10 border-violet-400/25',
-                'text-cyan-400 bg-cyan-400/10 border-cyan-400/25',
-                'text-rose-400 bg-rose-400/10 border-rose-400/25',
-            ];
-
             container.innerHTML = tags
-                .map((tag, index) => {
+                .map((tag) => {
                     const safeName =
                         typeof SecurityUtils !== 'undefined'
                             ? SecurityUtils.escapeHTML(tag.name)
                             : tag.name;
                     const isActive = this.currentTagFilter === tag.name;
-                    const colorClass = TAG_COLORS[index % 4];
 
                     return `<button type="button" data-tag="${safeName}"
-                        class="trending-tag shrink-0 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-[11px] font-semibold whitespace-nowrap transition ${colorClass} ${isActive ? 'brightness-125 scale-105 shadow-[0_10px_24px_rgba(0,0,0,0.16)]' : 'opacity-75 hover:opacity-100 hover:scale-105'}">
+                        class="trending-tag shrink-0 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-[11px] font-semibold whitespace-nowrap transition border-white/5 bg-white/5 text-textMuted ${isActive ? 'text-primary border-primary/20 bg-primary/10' : 'hover:text-secondary hover:border-white/10'}">
                         <span>#${safeName}</span><span class="opacity-50 text-[10px]">${tag.post_count}</span>
                     </button>`;
                 })
@@ -340,9 +391,9 @@ const ForumApp = {
 
         if (!postId) {
             if (typeof smoothNavigate === 'function') {
-                smoothNavigate('/static/forum/index.html');
+                smoothNavigate(this.FORUM_HOME_URL);
             } else {
-                window.location.href = '/static/forum/index.html';
+                window.location.href = this.FORUM_HOME_URL;
             }
             return;
         }
@@ -702,9 +753,9 @@ const ForumApp = {
             // 延遲後�??��?首�?
             setTimeout(() => {
                 if (typeof smoothNavigate === 'function') {
-                    smoothNavigate('/static/forum/index.html');
+                    smoothNavigate(this.FORUM_HOME_URL);
                 } else {
-                    window.location.href = '/static/forum/index.html';
+                    window.location.href = this.FORUM_HOME_URL;
                 }
             }, 1000);
         } catch (e) {
@@ -1388,7 +1439,7 @@ const ForumApp = {
                 // Determine redirect URL
                 const targetUrl = result.post_id
                     ? `/static/forum/post.html?id=${result.post_id}`
-                    : '/static/forum/index.html';
+                    : this.FORUM_HOME_URL;
 
                 // Redirect Action (with smooth transition)
                 const doRedirect = () => {
@@ -1486,9 +1537,9 @@ const ForumApp = {
     async initDashboardPage() {
         if (!AuthManager.currentUser) {
             if (typeof smoothNavigate === 'function') {
-                smoothNavigate('/static/forum/index.html');
+                smoothNavigate(this.FORUM_HOME_URL);
             } else {
-                window.location.href = '/static/forum/index.html';
+                window.location.href = this.FORUM_HOME_URL;
             }
             return;
         }

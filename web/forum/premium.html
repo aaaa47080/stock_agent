@@ -25,7 +25,7 @@
     <!-- Navbar -->
     <nav class="sticky top-0 z-50 bg-[#111017]/94 backdrop-blur-xl border-b border-white/5 px-4 py-3">
         <div class="max-w-5xl mx-auto flex items-center justify-between">
-            <a href="/static/forum/index.html" id="forum-premium-back-link"
+            <a href="/static/index.html#forum" id="forum-premium-back-link"
                 class="flex items-center gap-2 text-secondary font-bold hover:text-primary transition">
                 <i data-lucide="arrow-left" class="w-5 h-5"></i>
                 <span>Back to Forum</span>
@@ -48,7 +48,7 @@
                 <div>
                     <p class="text-[11px] uppercase tracking-[0.22em] text-primary/70">Membership</p>
                     <h1 class="mt-1 text-3xl font-extrabold text-secondary">升級到 Premium 會員</h1>
-                    <p class="mt-2 max-w-2xl text-sm leading-6 text-textMuted">保留論壇本身的深色基底，但把升級頁做成更像產品內的會員頁，而不是另一個外部落地頁。</p>
+                    <p class="mt-2 max-w-2xl text-sm leading-6 text-textMuted">升級後可使用更多論壇功能與更高額度。</p>
                 </div>
                 <div class="rounded-2xl border border-yellow-500/20 bg-yellow-500/8 px-4 py-3 text-sm text-yellow-300">
                     無限發文、無限回覆、優先體驗新功能
@@ -183,7 +183,7 @@
         document.addEventListener('DOMContentLoaded', async () => {
             const backLink = document.getElementById('forum-premium-back-link');
             if (backLink) {
-                backLink.href = sessionStorage.getItem('forumBackHref') || '/static/forum/index.html';
+                backLink.href = sessionStorage.getItem('forumBackHref') || '/static/index.html#forum';
             }
 
             // 初始化認證
