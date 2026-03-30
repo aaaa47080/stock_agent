@@ -6,13 +6,16 @@ Wrap large LangChain tool outputs to avoid flooding LangGraph message state.
 
 from __future__ import annotations
 
+import copy
 import json
 import logging
 import time
 import uuid
 from typing import Any, Optional
+from types import MethodType
 
 import orjson
+from langchain_core.tools import BaseTool
 
 from core.memory_scope import build_scope, scope_namespace
 
@@ -221,6 +224,30 @@ class _CompactingToolWrapper:
             raise
 
 
+def _compact_output(
+    raw: Any,
+    *,
+    owner_id: Optional[str],
+    workspace_id: Optional[str],
+    session_id: Optional[str],
+) -> Any:
+    text = _to_str(raw)
+    if len(text) <= THRESHOLD:
+        return raw
+    uid = _store_sync(
+        text,
+        owner_id=owner_id,
+        workspace_id=workspace_id,
+        session_id=session_id,
+    )
+    preview = text[:PREVIEW_LEN]
+    return (
+        f"[COMPACTED:{uid}]\n"
+        f"{preview}...\n"
+        f"[{len(text):,} chars total. Retrieve full data with key: {uid}]"
+    )
+
+
 def wrap_tool(
     tool: Any,
     owner_id: Optional[str] = None,
@@ -230,6 +257,81 @@ def wrap_tool(
     """Return a non-mutating wrapper for LangChain tools that expose `invoke()`."""
     if not hasattr(tool, "invoke"):
         return tool
+    if getattr(tool, "_compactor_wrapped", False):
+        return tool
+    if isinstance(tool, BaseTool):
+        wrapped_tool = copy.copy(tool)
+        original_invoke = tool.invoke
+        original_ainvoke = getattr(tool, "ainvoke", None)
+        wrapped_tool.last_stat = None
+        wrapped_tool._compactor_wrapped = True
+
+        def _wrapped_invoke(self: Any, input: Any, **kwargs: Any) -> Any:  # noqa: A002
+            start = time.monotonic()
+            try:
+                raw = original_invoke(input, **kwargs)
+                text = _to_str(raw)
+                latency_ms = int((time.monotonic() - start) * 1000)
+                self.last_stat = {
+                    "tool_name": getattr(tool, "name", "unknown"),
+                    "success": True,
+                    "latency_ms": latency_ms,
+                    "output_chars": len(text),
+                    "error_type": None,
+                }
+                return _compact_output(
+                    raw,
+                    owner_id=owner_id,
+                    workspace_id=workspace_id,
+                    session_id=session_id,
+                )
+            except Exception as exc:
+                latency_ms = int((time.monotonic() - start) * 1000)
+                self.last_stat = {
+                    "tool_name": getattr(tool, "name", "unknown"),
+                    "success": False,
+                    "latency_ms": latency_ms,
+                    "output_chars": 0,
+                    "error_type": type(exc).__name__,
+                }
+                raise
+
+        async def _wrapped_ainvoke(self: Any, input: Any, **kwargs: Any) -> Any:  # noqa: A002
+            start = time.monotonic()
+            try:
+                if original_ainvoke is not None:
+                    raw = await original_ainvoke(input, **kwargs)
+                else:
+                    raw = original_invoke(input, **kwargs)
+                text = _to_str(raw)
+                latency_ms = int((time.monotonic() - start) * 1000)
+                self.last_stat = {
+                    "tool_name": getattr(tool, "name", "unknown"),
+                    "success": True,
+                    "latency_ms": latency_ms,
+                    "output_chars": len(text),
+                    "error_type": None,
+                }
+                return _compact_output(
+                    raw,
+                    owner_id=owner_id,
+                    workspace_id=workspace_id,
+                    session_id=session_id,
+                )
+            except Exception as exc:
+                latency_ms = int((time.monotonic() - start) * 1000)
+                self.last_stat = {
+                    "tool_name": getattr(tool, "name", "unknown"),
+                    "success": False,
+                    "latency_ms": latency_ms,
+                    "output_chars": 0,
+                    "error_type": type(exc).__name__,
+                }
+                raise
+
+        wrapped_tool.invoke = MethodType(_wrapped_invoke, wrapped_tool)
+        wrapped_tool.ainvoke = MethodType(_wrapped_ainvoke, wrapped_tool)
+        return wrapped_tool
     return _CompactingToolWrapper(
         tool,
         owner_id=owner_id,
