@@ -19,6 +19,7 @@
     --mobile-nav-clearance: calc(5.5rem + var(--mobile-nav-bottom-gap) + var(--mobile-safe-bottom));
     --mobile-input-clearance: calc(5.75rem + var(--mobile-safe-bottom));
     --mobile-toast-clearance: calc(var(--mobile-nav-clearance) + 1rem);
+    --chat-keyboard-offset: 0px;
     --z-sticky: 50;
     --z-sidebar: 50;
     --z-modal-backdrop: 60;
@@ -853,15 +854,70 @@ nav.sticky {
     }
 
     #chat-messages {
-        padding-bottom: calc(13rem + var(--mobile-safe-bottom));
+        padding-bottom: calc(13rem + var(--mobile-safe-bottom) + var(--chat-keyboard-offset));
     }
 
     #no-llm-key-warning {
         bottom: calc(9rem + var(--mobile-safe-bottom));
     }
 
-    #chat-tab > .fixed.bottom-0 {
-        padding-bottom: calc(1rem + var(--mobile-safe-bottom));
+    #chat-tab > .fixed.bottom-0,
+    [data-shell-fixed-input] {
+        left: 0 !important;
+        right: 0 !important;
+        bottom: calc(var(--mobile-nav-clearance) + var(--chat-keyboard-offset)) !important;
+        padding: 0.75rem 0.75rem calc(0.75rem + var(--mobile-safe-bottom));
+    }
+
+    [data-shell-fixed-input] > div {
+        width: 100%;
+        max-width: min(100%, 42rem);
+        min-width: 0;
+    }
+
+    [data-shell-fixed-input] > div > .bg-surface\/90 {
+        width: 100%;
+        min-width: 0;
+        display: grid;
+        grid-template-columns: minmax(5.5rem, 6.25rem) 2.5rem minmax(0, 1fr) 2.75rem;
+        align-items: center;
+        gap: 0.375rem;
+        padding: 0.5rem;
+        border-radius: 1.5rem;
+    }
+
+    #analysis-mode-select,
+    #user-input {
+        min-width: 0;
+        width: 100%;
+    }
+
+    #analysis-mode-select {
+        max-width: 100%;
+        padding-left: 0.875rem;
+        padding-right: 1.75rem;
+        font-size: 0.75rem;
+    }
+
+    #user-input {
+        font-size: 16px;
+        padding-left: 0.5rem;
+        padding-right: 0.5rem;
+    }
+
+    #send-btn {
+        width: 2.75rem;
+        height: 2.75rem;
+    }
+
+    html.chat-keyboard-open #global-nav-container {
+        opacity: 0;
+        pointer-events: none;
+        transform: translateX(-50%) translateY(1.5rem);
+    }
+
+    html.chat-keyboard-open #toast-container {
+        bottom: calc(var(--chat-keyboard-offset) + 1rem) !important;
     }
 }
 

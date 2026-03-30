@@ -22,6 +22,51 @@ window.addEventListener('apiKeyUpdated', () => {
     _cachedUserProvider = null;
 });
 
+function syncMobileChatViewport() {
+    const root = document.documentElement;
+    const vv = window.visualViewport;
+    const fixedInput = document.querySelector('[data-shell-fixed-input]');
+    const activeEl = document.activeElement;
+    const inputFocused =
+        !!fixedInput &&
+        !!activeEl &&
+        fixedInput.contains(activeEl) &&
+        /^(INPUT|TEXTAREA)$/i.test(activeEl.tagName);
+
+    if (!vv || !fixedInput) {
+        root.style.setProperty('--chat-keyboard-offset', '0px');
+        root.classList.remove('chat-keyboard-open');
+        return;
+    }
+
+    const keyboardOffset = Math.max(
+        0,
+        Math.round(window.innerHeight - vv.height - vv.offsetTop)
+    );
+
+    if (inputFocused && keyboardOffset > 0) {
+        root.style.setProperty('--chat-keyboard-offset', `${keyboardOffset}px`);
+        root.classList.add('chat-keyboard-open');
+    } else {
+        root.style.setProperty('--chat-keyboard-offset', '0px');
+        root.classList.remove('chat-keyboard-open');
+    }
+}
+
+window.syncMobileChatViewport = syncMobileChatViewport;
+
+if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', syncMobileChatViewport);
+    window.visualViewport.addEventListener('scroll', syncMobileChatViewport);
+}
+
+window.addEventListener('resize', syncMobileChatViewport);
+document.addEventListener('focusin', syncMobileChatViewport);
+document.addEventListener('focusout', () => {
+    window.setTimeout(syncMobileChatViewport, 80);
+});
+document.addEventListener('DOMContentLoaded', syncMobileChatViewport);
+
 // ✅ 效能優化：scoped lucide icon 初始化，避免全頁 DOM 掃描
 function createIconsIn(el) {
     if (!window.lucide || !el) return;

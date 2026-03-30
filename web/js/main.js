@@ -28,8 +28,13 @@ window.addEventListener('unhandledrejection', (event) => {
     if (reason?.name === 'AbortError') return;
     if (reason?.message?.includes('postMessage') && reason?.message?.includes('minepi.com')) return;
     console.error('[Unhandled Rejection]', reason);
+    window.__lastUnhandledReasonMessage =
+        (typeof reason?.message === 'string' && reason.message.trim()) ||
+        (typeof reason === 'string' && reason.trim()) ||
+        '發生未預期的錯誤';
     if (typeof showToast === 'function') {
-        showToast('發生未預期的錯誤', 'error');
+        showToast(window.__lastUnhandledReasonMessage || '發生未預期的錯誤', 'error');
+        return;
     }
 });
 

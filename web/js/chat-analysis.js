@@ -82,6 +82,41 @@ async function refreshAnalysisModeSelector() {
 window.getSelectedAnalysisMode = getSelectedAnalysisMode;
 window.refreshAnalysisModeSelector = refreshAnalysisModeSelector;
 
+function getSelectedUserModel(provider) {
+    const savedModel = window.APIKeyManager?.getModelForProvider?.(provider);
+    if (savedModel) return savedModel;
+
+    const modelInput = document.getElementById('llm-model-input');
+    const modelSelect = document.getElementById('llm-model-select');
+
+    if (provider === 'openrouter') {
+        return modelInput?.value?.trim() || null;
+    }
+
+    return modelSelect?.value?.trim() || null;
+}
+
+function normalizeChatErrorMessage(message, fallback) {
+    if (typeof message !== 'string') {
+        return fallback;
+    }
+
+    const normalized = message.trim();
+    if (!normalized) {
+        return fallback;
+    }
+
+    if (
+        normalized === 'Internal server error. Please try again.' ||
+        normalized.toLowerCase() === 'unknown' ||
+        normalized.toLowerCase() === 'error'
+    ) {
+        return fallback;
+    }
+
+    return normalized;
+}
+
 function renderResponseMetadata(metadata = {}) {
     const mode = metadata.analysis_mode || 'quick';
     const verificationStatus = metadata.verification_status || mode;
@@ -231,7 +266,14 @@ async function sendMessage() {
         }
     }
 
-    const userSelectedModel = window.APIKeyManager.getModelForProvider(userProvider);
+    const userSelectedModel = getSelectedUserModel(userProvider);
+    if (userProvider === 'openrouter' && !userSelectedModel) {
+        resetChatUI();
+        if (typeof window.showToast === 'function') {
+            window.showToast('請先在設定填入 OpenRouter 模型名稱，例如 openai/gpt-4o。', 'error');
+        }
+        return;
+    }
     const checkboxes = document.querySelectorAll('.analysis-checkbox:checked');
     const selection = Array.from(checkboxes).map((cb) => cb.value);
     const marketType = 'spot';
@@ -343,16 +385,27 @@ window.currentAnalysisController = AppStore.get('currentAnalysisController');
         });
 
         if (!response.ok) {
-            let errorMsg = `Server Error (${response.status})`;
+            let errorMsg = `伺服器錯誤 (${response.status})`;
             try {
                 const errorData = await response.json();
-                if (errorData.detail) errorMsg = errorData.detail;
+                if (typeof errorData.detail === 'string' && errorData.detail.trim()) {
+                    errorMsg = errorData.detail.trim();
+                } else if (typeof errorData.message === 'string' && errorData.message.trim()) {
+                    errorMsg = errorData.message.trim();
+                } else if (typeof errorData.error === 'string' && errorData.error.trim()) {
+                    errorMsg = errorData.error.trim();
+                }
             } catch (e) {
                 // If not JSON, try text
-                const text = await response.text();
-                if (text) errorMsg = text.substring(0, 100);
+                const responseText = await response.text();
+                if (responseText) errorMsg = responseText.substring(0, 160).trim();
             }
-            throw new Error(errorMsg);
+            throw new Error(
+                normalizeChatErrorMessage(
+                    errorMsg,
+                    '訊息送出失敗，請確認 OpenRouter 模型名稱與 API Key 設定。'
+                )
+            );
         }
 
         // Backend 已經保存了用戶訊息並更新了標題，立即刷新列表以顯示新標題
@@ -491,7 +544,12 @@ window.currentAnalysisController = AppStore.get('currentAnalysisController');
                     if (data.error) {
                         clearInterval(timerInterval);
                         clearAnalysisTimeouts();
-                        botMsgDiv.innerHTML = `<span class="text-red-400">Error: ${escapeHtml(data.error)}</span>`;
+                        botMsgDiv.innerHTML = `<span class="text-red-400">${escapeHtml(
+                            normalizeChatErrorMessage(
+                                data.error,
+                                '分析失敗，請確認模型設定後再試一次。'
+                            )
+                        )}</span>`;
                         isAnalyzing = false;
                     }
                 }
@@ -515,7 +573,20 @@ window.currentAnalysisController = AppStore.get('currentAnalysisController');
             }
         } else {
             console.error(err);
-            botMsgDiv.innerHTML = `<span class="text-red-400">${escapeHtml(err.message || '連線失敗，請檢查後端伺服器。')}</span>`;
+            botMsgDiv.innerHTML = `<span class="text-red-400">${escapeHtml(
+                normalizeChatErrorMessage(
+                    err.message,
+                    '訊息送出失敗，請確認 OpenRouter 模型名稱與 API Key 設定。'
+                )
+            )}</span>`;
+        }
+        if (!(err instanceof DOMException && err.name === 'AbortError') && err?.name !== 'AbortError') {
+            botMsgDiv.innerHTML = `<span class="text-red-400">${escapeHtml(
+                normalizeChatErrorMessage(
+                    err?.message,
+                    '訊息送出失敗，請確認 OpenRouter 模型名稱與 API Key 設定。'
+                )
+            )}</span>`;
         }
         clearInterval(timerInterval);
         clearAnalysisTimeouts();
