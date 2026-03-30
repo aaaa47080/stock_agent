@@ -24,7 +24,8 @@
     </style>
 </head>
 <body class="relative min-h-screen overflow-x-hidden bg-background text-textMain flex flex-col" data-page="index">
-    <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 top-0 h-[280px] bg-[linear-gradient(180deg,rgba(212,182,147,0.12),transparent)]"></div>
+    <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 top-0 h-[320px] bg-[linear-gradient(180deg,rgba(212,182,147,0.14),transparent)]"></div>
+    <div aria-hidden="true" class="pointer-events-none absolute -left-16 top-24 h-40 w-40 rounded-full bg-primary/8 blur-3xl"></div>
 
     <nav class="sticky top-0 z-50 border-b border-white/6 bg-background/94 px-4 py-3 backdrop-blur-xl">
         <div class="max-w-3xl mx-auto flex items-center justify-between">
@@ -56,56 +57,56 @@
     <div class="sticky top-[52px] z-40 bg-background/96 backdrop-blur-xl border-b border-white/5">
         <div class="max-w-3xl mx-auto">
             <div class="px-4 pt-4 pb-2">
-                <div class="rounded-[24px] bg-surface px-5 py-5 shadow-[0_14px_40px_rgba(0,0,0,0.16)] ring-1 ring-white/5">
+                <div class="rounded-[30px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] px-5 py-5 shadow-[0_20px_48px_rgba(0,0,0,0.18)]">
                     <p class="text-[11px] uppercase tracking-[0.22em] text-primary/70">Community Board</p>
                     <h1 class="mt-1 text-2xl font-extrabold tracking-tight text-textMain">Pi Forum</h1>
-                    <p class="mt-2 text-sm leading-6 text-textMuted">看分析、問問題、分享心得。這裡保留論壇感，不做花俏 landing page，也不讓資訊黏成一團。</p>
+                    <p class="mt-2 text-sm leading-6 text-textMuted">看分析、問問題、分享心得。視覺語言往 crypto 配置頁靠攏，保留論壇效率，但少一點硬邊和版塊切割感。</p>
                 </div>
             </div>
 
-            <div class="flex gap-2 px-4 pt-3 pb-2 overflow-x-auto scroll-x-hide" id="category-pills">
-                <button type="button" data-category="" class="category-pill shrink-0 inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap border border-[#d4b693]/50 bg-[#d4b693]/15 text-[#d4b693]">
+            <div class="flex gap-2.5 px-4 pt-3 pb-2 overflow-x-auto scroll-x-hide" id="category-pills">
+                <button type="button" data-category="" class="category-pill shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition whitespace-nowrap border border-[#d4b693]/50 bg-[#d4b693]/15 text-[#d4b693]">
                     全部
                 </button>
-                <button type="button" data-category="analysis" class="category-pill shrink-0 inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap border border-white/8 text-textMuted hover:border-amber-400/40 hover:text-amber-400 hover:bg-amber-400/8">
+                <button type="button" data-category="analysis" class="category-pill shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition whitespace-nowrap border border-white/8 text-textMuted hover:border-amber-400/50 hover:text-amber-400 hover:bg-amber-400/10">
                     分析
                 </button>
-                <button type="button" data-category="question" class="category-pill shrink-0 inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap border border-white/8 text-textMuted hover:border-blue-400/40 hover:text-blue-400 hover:bg-blue-400/8">
+                <button type="button" data-category="question" class="category-pill shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition whitespace-nowrap border border-white/8 text-textMuted hover:border-blue-400/50 hover:text-blue-400 hover:bg-blue-400/10">
                     請問
                 </button>
-                <button type="button" data-category="tutorial" class="category-pill shrink-0 inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap border border-white/8 text-textMuted hover:border-emerald-400/40 hover:text-emerald-400 hover:bg-emerald-400/8">
+                <button type="button" data-category="tutorial" class="category-pill shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition whitespace-nowrap border border-white/8 text-textMuted hover:border-emerald-400/50 hover:text-emerald-400 hover:bg-emerald-400/10">
                     學習
                 </button>
-                <button type="button" data-category="news" class="category-pill shrink-0 inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap border border-white/8 text-textMuted hover:border-violet-400/40 hover:text-violet-400 hover:bg-violet-400/8">
+                <button type="button" data-category="news" class="category-pill shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition whitespace-nowrap border border-white/8 text-textMuted hover:border-violet-400/50 hover:text-violet-400 hover:bg-violet-400/10">
                     新聞
                 </button>
-                <button type="button" data-category="chat" class="category-pill shrink-0 inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap border border-white/8 text-textMuted hover:border-rose-400/40 hover:text-rose-400 hover:bg-rose-400/8">
+                <button type="button" data-category="chat" class="category-pill shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition whitespace-nowrap border border-white/8 text-textMuted hover:border-rose-400/50 hover:text-rose-400 hover:bg-rose-400/10">
                     閒聊
                 </button>
-                <button type="button" data-category="insight" class="category-pill shrink-0 inline-flex items-center gap-1 px-3.5 py-1.5 rounded-full text-xs font-bold transition whitespace-nowrap border border-white/8 text-textMuted hover:border-cyan-400/40 hover:text-cyan-400 hover:bg-cyan-400/8">
+                <button type="button" data-category="insight" class="category-pill shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-bold transition whitespace-nowrap border border-white/8 text-textMuted hover:border-cyan-400/50 hover:text-cyan-400 hover:bg-cyan-400/10">
                     心得
                 </button>
             </div>
 
-            <div class="flex items-center gap-2 px-4 pb-3 overflow-x-auto scroll-x-hide">
-                <span class="shrink-0 text-[10px] font-bold uppercase tracking-[0.12em] text-textMuted/40">熱門</span>
-                <div id="trending-tags" class="flex items-center gap-1.5 min-w-0">
+            <div class="flex items-center gap-3 px-4 pb-4 overflow-x-auto scroll-x-hide">
+                <span class="shrink-0 text-[10px] font-bold uppercase tracking-[0.14em] text-textMuted/50">熱門</span>
+                <div id="trending-tags" class="flex items-center gap-2.5 min-w-0">
                     <span class="text-xs text-textMuted/40 italic">載入中...</span>
                 </div>
             </div>
         </div>
     </div>
 
-    <main class="relative z-10 flex-1 max-w-3xl mx-auto w-full px-3 py-5 pb-28">
-        <div id="active-post-filters" class="hidden mb-3 flex items-center gap-2">
+    <main class="relative z-10 flex-1 max-w-3xl mx-auto w-full px-3 py-6 pb-28">
+        <div id="active-post-filters" class="hidden mb-5 flex items-center gap-2.5">
             <span class="text-xs text-textMuted/60">篩選：</span>
-            <span id="active-post-filters-text" class="text-xs font-medium text-primary bg-primary/10 px-2.5 py-1 rounded-full"></span>
+            <span id="active-post-filters-text" class="text-xs font-medium text-primary bg-primary/10 px-3.5 py-1.5 rounded-full border border-primary/15"></span>
             <button id="clear-post-filters" type="button" class="text-xs text-textMuted hover:text-primary transition">
-                <i data-lucide="x" class="w-3 h-3"></i>
+                <i data-lucide="x" class="w-3.5 h-3.5"></i>
             </button>
         </div>
 
-        <div id="post-list" class="space-y-3.5"></div>
+        <div id="post-list" class="space-y-5"></div>
     </main>
 
     <select id="category-filter" class="hidden"></select>
@@ -129,10 +130,10 @@
     <script type="module" src="/static/js/utils.js?v=1"></script>
     <script type="module" src="/static/js/store.js?v=1"></script>
     <script type="module" src="/static/js/ui-shell.js?v=1"></script>
-    <script src="/static/js/nav-config.js?v=7"></script>
-    <script src="/static/js/i18n.js?v=9"></script>
-    <script src="/static/js/components/LanguageSwitcher.js?v=3"></script>
-    <script src="/static/js/global-nav.js?v=2"></script>
+    <script type="module" src="/static/js/nav-config.js?v=7"></script>
+    <script type="module" src="/static/js/i18n.js?v=9"></script>
+    <script type="module" src="/static/js/components/LanguageSwitcher.js?v=3"></script>
+    <script type="module" src="/static/js/global-nav.js?v=2"></script>
     <script type="module" src="/static/js/app.js?v=55"></script>
     <script type="module" src="/static/js/api-client.js?v=1"></script>
     <script type="module" src="/static/js/apiKeyManager.js?v=48"></script>

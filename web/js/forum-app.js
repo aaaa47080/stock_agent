@@ -196,19 +196,20 @@ const ForumApp = {
 
             // Category color config for post cards
             const CATEGORY_COLORS = {
-                analysis: { rail: 'bg-amber-400',   avatar: 'bg-amber-400/20 text-amber-400',   tag: 'bg-amber-400/10 text-amber-400/80',   badge: 'text-amber-400/90' },
-                question: { rail: 'bg-blue-400',    avatar: 'bg-blue-400/20 text-blue-400',     tag: 'bg-blue-400/10 text-blue-400/80',     badge: 'text-blue-400/90' },
-                tutorial: { rail: 'bg-emerald-400', avatar: 'bg-emerald-400/20 text-emerald-400',tag: 'bg-emerald-400/10 text-emerald-400/80',badge: 'text-emerald-400/90' },
-                news:     { rail: 'bg-violet-400',  avatar: 'bg-violet-400/20 text-violet-400', tag: 'bg-violet-400/10 text-violet-400/80', badge: 'text-violet-400/90' },
-                chat:     { rail: 'bg-rose-400',    avatar: 'bg-rose-400/20 text-rose-400',     tag: 'bg-rose-400/10 text-rose-400/80',     badge: 'text-rose-400/90' },
-                insight:  { rail: 'bg-cyan-400',    avatar: 'bg-cyan-400/20 text-cyan-400',     tag: 'bg-cyan-400/10 text-cyan-400/80',     badge: 'text-cyan-400/90' },
+                analysis: { rail: 'bg-amber-400',   avatar: 'bg-amber-400/20 text-amber-400',   tag: 'bg-amber-400/10 text-amber-400/80',   badge: 'text-amber-400/90', glow: 'bg-amber-400/12' },
+                question: { rail: 'bg-blue-400',    avatar: 'bg-blue-400/20 text-blue-400',     tag: 'bg-blue-400/10 text-blue-400/80',     badge: 'text-blue-400/90', glow: 'bg-blue-400/12' },
+                tutorial: { rail: 'bg-emerald-400', avatar: 'bg-emerald-400/20 text-emerald-400',tag: 'bg-emerald-400/10 text-emerald-400/80',badge: 'text-emerald-400/90', glow: 'bg-emerald-400/12' },
+                news:     { rail: 'bg-violet-400',  avatar: 'bg-violet-400/20 text-violet-400', tag: 'bg-violet-400/10 text-violet-400/80', badge: 'text-violet-400/90', glow: 'bg-violet-400/12' },
+                chat:     { rail: 'bg-rose-400',    avatar: 'bg-rose-400/20 text-rose-400',     tag: 'bg-rose-400/10 text-rose-400/80',     badge: 'text-rose-400/90', glow: 'bg-rose-400/12' },
+                insight:  { rail: 'bg-cyan-400',    avatar: 'bg-cyan-400/20 text-cyan-400',     tag: 'bg-cyan-400/10 text-cyan-400/80',     badge: 'text-cyan-400/90', glow: 'bg-cyan-400/12' },
             };
-            const DEFAULT_COLORS = { rail: 'bg-[#d4b693]', avatar: 'bg-[#d4b693]/20 text-[#d4b693]', tag: 'bg-[#d4b693]/10 text-[#d4b693]/80', badge: 'text-[#d4b693]/90' };
+            const DEFAULT_COLORS = { rail: 'bg-[#d4b693]', avatar: 'bg-[#d4b693]/20 text-[#d4b693]', tag: 'bg-[#d4b693]/10 text-[#d4b693]/80', badge: 'text-[#d4b693]/90', glow: 'bg-primary/10' };
 
             posts.forEach((post) => {
                 const el = document.createElement('div');
                 // Same card pattern as forex/twstock items
-                el.className = 'group bg-surface border border-white/5 rounded-2xl p-4 flex items-start gap-3 cursor-pointer transition hover:border-primary/30 active:scale-[0.99]';
+                el.className =
+                    'group relative overflow-hidden rounded-[30px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] p-5 sm:p-6 flex items-start gap-4 cursor-pointer transition duration-300 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-[0_18px_44px_rgba(0,0,0,0.22)] active:scale-[0.99]';
                 el.onclick = () => this.navigateToPost(post.id);
 
                 const colors = CATEGORY_COLORS[(post.category || '').toLowerCase()] || DEFAULT_COLORS;
@@ -221,7 +222,7 @@ const ForumApp = {
                         tagsHtml = tags
                             .map((tag) => {
                                 const safe = typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(tag) : tag.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                                return `<span class="text-[10px] font-medium px-2 py-0.5 rounded-full ${colors.tag}">#${safe}</span>`;
+                                return `<span class="text-[11px] font-semibold px-2.5 py-1 rounded-full ${colors.tag}">#${safe}</span>`;
                             })
                             .join('');
                     }
@@ -239,24 +240,26 @@ const ForumApp = {
 
                 // Icon box: same w-10 h-10 rounded-xl pattern as HERO_ICON_BOX_CLASS / twstock items
                 el.innerHTML = `
-                    <div class="w-10 h-10 rounded-xl bg-background border border-white/5 flex items-center justify-center text-sm font-bold ${colors.avatar} flex-shrink-0 group-hover:scale-105 transition-transform">${avatarLetter}</div>
+                    <div class="pointer-events-none absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-white/12 to-transparent"></div>
+                    <div class="pointer-events-none absolute -right-10 -top-10 h-24 w-24 rounded-full ${colors.glow} blur-3xl opacity-60"></div>
+                    <div class="w-12 h-12 rounded-2xl bg-background/80 border border-white/6 flex items-center justify-center text-sm font-bold ${colors.avatar} flex-shrink-0 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] group-hover:scale-105 transition-transform">${avatarLetter}</div>
                     <div class="flex-1 min-w-0">
-                        <div class="flex items-start justify-between gap-2 mb-1">
+                        <div class="flex items-start justify-between gap-4 mb-2.5">
                             <div class="min-w-0 flex-1">
-                                <div class="flex items-center gap-1.5 mb-0.5 flex-wrap">
+                                <div class="flex items-center gap-2.5 mb-2 flex-wrap">
                                     <a href="/static/forum/profile.html?id=${post.user_id}" class="text-xs text-textMuted hover:text-primary transition truncate font-semibold" onclick="event.stopPropagation()">${safeUsername}</a>
-                                    <span class="text-[10px] font-bold uppercase tracking-[0.1em] ${colors.badge} shrink-0">${categoryShort}</span>
+                                    <span class="inline-flex items-center rounded-full border border-white/8 bg-background/60 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${colors.badge} shrink-0">${categoryShort}</span>
                                 </div>
-                                <h3 class="font-bold text-secondary text-sm leading-snug">${safeTitle}</h3>
+                                <h3 class="font-bold text-secondary text-[15px] leading-snug sm:text-base">${safeTitle}</h3>
                             </div>
-                            <span class="text-[10px] text-textMuted/40 shrink-0 mt-0.5">${date}</span>
+                            <span class="text-[10px] text-textMuted/50 shrink-0 mt-0.5">${date}</span>
                         </div>
-                        ${tagsHtml ? `<div class="flex flex-wrap gap-1 mt-1.5">${tagsHtml}</div>` : ''}
-                        <div class="flex items-center gap-3 mt-2 text-[10px] text-textMuted/50">
-                            <span class="flex items-center gap-1 ${pushCount > 0 ? 'text-success/70' : ''}"><i data-lucide="thumbs-up" class="h-3 w-3"></i>${pushCount}</span>
-                            <span class="flex items-center gap-1 ${booCount > 0 ? 'text-danger/70' : ''}"><i data-lucide="thumbs-down" class="h-3 w-3"></i>${booCount}</span>
-                            <span class="flex items-center gap-1"><i data-lucide="message-square" class="h-3 w-3"></i>${post.comment_count}</span>
-                            ${post.tips_total > 0 ? `<span class="flex items-center gap-1 text-primary/60"><i data-lucide="gift" class="h-3 w-3"></i>${post.tips_total} Pi</span>` : ''}
+                        ${tagsHtml ? `<div class="flex flex-wrap gap-2 mt-2.5">${tagsHtml}</div>` : ''}
+                        <div class="mt-3.5 flex flex-wrap items-center gap-3 text-xs text-textMuted/60">
+                            <span class="inline-flex items-center gap-2 rounded-full border border-white/8 bg-background/60 px-3.5 py-2 ${pushCount > 0 ? 'text-success/90' : ''}"><i data-lucide="thumbs-up" class="h-3.5 w-3.5"></i><span>${pushCount}</span></span>
+                            <span class="inline-flex items-center gap-2 rounded-full border border-white/8 bg-background/60 px-3.5 py-2 ${booCount > 0 ? 'text-danger/90' : ''}"><i data-lucide="thumbs-down" class="h-3.5 w-3.5"></i><span>${booCount}</span></span>
+                            <span class="inline-flex items-center gap-2 rounded-full border border-white/8 bg-background/60 px-3.5 py-2"><i data-lucide="message-square" class="h-3.5 w-3.5"></i><span>${post.comment_count}</span></span>
+                            ${post.tips_total > 0 ? `<span class="inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/12 px-3.5 py-2 text-primary/90"><i data-lucide="gift" class="h-3.5 w-3.5"></i><span>${post.tips_total} Pi</span></span>` : ''}
                         </div>
                     </div>
                 `;
@@ -299,8 +302,8 @@ const ForumApp = {
                     const colorClass = TAG_COLORS[index % 4];
 
                     return `<button type="button" data-tag="${safeName}"
-                        class="trending-tag shrink-0 inline-flex items-center gap-1 px-2.5 py-1 rounded-full border text-[11px] font-semibold whitespace-nowrap transition ${colorClass} ${isActive ? 'brightness-125 scale-105' : 'opacity-75 hover:opacity-100 hover:scale-105'}">
-                        <span>#${safeName}</span><span class="opacity-60 text-[10px]">${tag.post_count}</span>
+                        class="trending-tag shrink-0 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-[11px] font-semibold whitespace-nowrap transition ${colorClass} ${isActive ? 'brightness-125 scale-105 shadow-[0_10px_24px_rgba(0,0,0,0.16)]' : 'opacity-75 hover:opacity-100 hover:scale-105'}">
+                        <span>#${safeName}</span><span class="opacity-50 text-[10px]">${tag.post_count}</span>
                     </button>`;
                 })
                 .join('');
@@ -418,7 +421,7 @@ const ForumApp = {
                     tagsContainer.innerHTML = tags
                         .map(
                             (tag) =>
-                                `<span class="text-sm bg-primary/10 text-primary px-3 py-1 rounded-full">#${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(tag) : tag}</span>`
+                                `<span class="inline-flex items-center rounded-full border border-primary/25 bg-primary/12 px-3.5 py-1.5 text-xs font-semibold text-primary">#${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(tag) : tag}</span>`
                         )
                         .join('');
                 } catch (e) {
@@ -452,7 +455,7 @@ const ForumApp = {
             if (titleEl) {
                 actionsContainer = document.createElement('div');
                 actionsContainer.id = 'author-actions';
-                actionsContainer.className = 'flex gap-2 mt-4 mb-4';
+                actionsContainer.className = 'flex flex-wrap gap-2 mt-5 mb-2';
                 titleEl.parentNode.insertBefore(actionsContainer, titleEl.nextSibling);
             }
         }
@@ -461,13 +464,13 @@ const ForumApp = {
             if (isAuthor) {
                 actionsContainer.innerHTML = `
                     <button id="btn-edit"
-                        class="bg-white/5 hover:bg-white/10 text-secondary px-3 py-1.5 rounded-lg flex items-center gap-2 transition text-sm border border-white/10">
-                        <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
+                        class="inline-flex items-center gap-2.5 rounded-full border border-white/10 bg-background/60 px-5 py-2.5 text-sm text-secondary transition hover:bg-white/10">
+                        <i data-lucide="edit-2" class="w-4 h-4"></i>
                         <span>編輯</span>
                     </button>
                     <button id="btn-delete"
-                        class="bg-danger/10 hover:bg-danger/20 text-danger px-3 py-1.5 rounded-lg flex items-center gap-2 transition text-sm border border-danger/20">
-                        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                        class="inline-flex items-center gap-2.5 rounded-full border border-danger/25 bg-danger/10 px-5 py-2.5 text-sm text-danger transition hover:bg-danger/20">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
                         <span>刪除</span>
                     </button>
                 `;
@@ -521,18 +524,19 @@ const ForumApp = {
                 if (comment.type !== 'comment') return; // ?�顯示�??��?�?
 
                 const el = document.createElement('div');
-                el.className = 'border-b border-white/5 py-3';
+                el.className =
+                    'rounded-[24px] border border-white/8 bg-background/40 px-5 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]';
                 el.innerHTML = `
-                    <div class="flex justify-between items-start mb-1">
+                    <div class="mb-3 flex items-start justify-between gap-4">
                         <a href="/static/forum/profile.html?id=${comment.user_id}" class="font-bold text-sm text-secondary hover:text-primary transition">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(comment.username || comment.user_id) : comment.username || comment.user_id}</a>
-                        <div class="flex items-center gap-2">
-                            <span class="text-xs text-textMuted">${formatTWDate(comment.created_at, true)}</span>
-                            <button data-report-type="comment" data-report-id="${comment.id}" class="text-textMuted hover:text-danger p-1 rounded transition report-trigger" title="Report">
-                                <i data-lucide="flag" class="w-3 h-3"></i>
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs text-textMuted/70">${formatTWDate(comment.created_at, true)}</span>
+                            <button data-report-type="comment" data-report-id="${comment.id}" class="rounded-full border border-white/8 bg-background/50 p-2 text-textMuted transition hover:text-danger hover:border-danger/25 hover:bg-danger/10 report-trigger" title="Report">
+                                <i data-lucide="flag" class="w-3.5 h-3.5"></i>
                             </button>
                         </div>
                     </div>
-                    <div class="text-textMain text-sm">${escapeHtml(comment.content)}</div>
+                    <div class="text-sm leading-7 text-textMain/90">${escapeHtml(comment.content)}</div>
                 `;
                 container.appendChild(el);
             });
@@ -1632,22 +1636,22 @@ const ForumApp = {
             posts.forEach((post) => {
                 const el = document.createElement('div');
                 el.className =
-                    'flex items-center justify-between border-b border-white/5 pb-3 last:border-0 last:pb-0';
+                    'flex items-center justify-between border-b border-white/5 pb-4 last:border-0 last:pb-0';
 
                 const pushCount = Math.max(0, post.push_count || 0);
 
                 el.innerHTML = `
                     <div class="overflow-hidden mr-4">
                          <a href="/static/forum/post.html?id=${post.id}" class="font-bold text-textMain hover:text-primary transition truncate block">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.title || '') : post.title || ''}</a>
-                         <div class="text-xs text-textMuted mt-1 flex items-center gap-2">
+                         <div class="text-xs text-textMuted mt-1.5 flex items-center gap-2.5">
                             <span>${formatTWDate(post.created_at)}</span>
-                            <span class="bg-white/10 px-1.5 rounded text-[10px] uppercase">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.category) : post.category}</span>
+                            <span class="bg-white/10 px-2 py-0.5 rounded text-[10px] uppercase">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.category) : post.category}</span>
                          </div>
                     </div>
-                    <div class="flex items-center gap-3 text-xs text-textMuted shrink-0">
-                        <span class="flex items-center gap-1"><i data-lucide="message-square" class="w-3 h-3"></i> ${post.comment_count}</span>
-                        <span class="flex items-center gap-1 ${pushCount > 0 ? 'text-success' : ''}"><i data-lucide="thumbs-up" class="w-3 h-3"></i> ${pushCount}</span>
-                        <span class="flex items-center gap-1 ${post.boo_count > 0 ? 'text-danger' : ''}"><i data-lucide="thumbs-down" class="w-3 h-3"></i> ${post.boo_count || 0}</span>
+                    <div class="flex items-center gap-4 text-xs text-textMuted shrink-0">
+                        <span class="flex items-center gap-1.5"><i data-lucide="message-square" class="w-3.5 h-3.5"></i> ${post.comment_count}</span>
+                        <span class="flex items-center gap-1.5 ${pushCount > 0 ? 'text-success' : ''}"><i data-lucide="thumbs-up" class="w-3.5 h-3.5"></i> ${pushCount}</span>
+                        <span class="flex items-center gap-1.5 ${post.boo_count > 0 ? 'text-danger' : ''}"><i data-lucide="thumbs-down" class="w-3.5 h-3.5"></i> ${post.boo_count || 0}</span>
                     </div>
                 `;
                 container.appendChild(el);
@@ -1716,7 +1720,7 @@ const ForumApp = {
             allTx.slice(0, 20).forEach((tx, idx) => {
                 const el = document.createElement('div');
                 el.className =
-                    'flex items-center justify-between border-b border-white/5 py-4 hover:bg-white/5 px-2 rounded-xl transition cursor-pointer last:border-0';
+                    'flex items-center justify-between border-b border-white/5 py-4 hover:bg-white/5 px-3 rounded-xl transition cursor-pointer last:border-0';
 
                 el.dataset.txData = JSON.stringify(tx);
                 el.onclick = function () {
@@ -1749,8 +1753,8 @@ const ForumApp = {
                     : `${tx.amount > 0 ? '+' : ''}${Math.abs(tx.amount).toFixed(1)} Pi`;
 
                 el.innerHTML = `
-                    <div class="flex items-center gap-3 overflow-hidden">
-                         <div class="w-10 h-10 rounded-full bg-surfaceHighlight flex items-center justify-center shrink-0">
+                    <div class="flex items-center gap-4 overflow-hidden">
+                         <div class="w-11 h-11 rounded-full bg-surfaceHighlight flex items-center justify-center shrink-0">
                             <i data-lucide="${icon}" class="w-5 h-5 text-textMuted"></i>
                          </div>
                          <div class="overflow-hidden">
