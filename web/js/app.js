@@ -336,6 +336,24 @@ async function checkApiKeyStatus() {
             currentProvider = await window.APIKeyManager.getCurrentProvider();
             hasLlmKey = !!currentProvider;
         }
+        if (!hasLlmKey && typeof hydrateSettingsFromBackend === 'function') {
+            const hydrated = await hydrateSettingsFromBackend();
+            const settings = hydrated?.settings || {};
+            if (settings.primary_model_provider && window.APIKeyManager) {
+                window.APIKeyManager.setSelectedProvider(settings.primary_model_provider);
+                if (
+                    settings.primary_model_name &&
+                    typeof window.APIKeyManager.setModelForProvider === 'function'
+                ) {
+                    await window.APIKeyManager.setModelForProvider(
+                        settings.primary_model_provider,
+                        settings.primary_model_name
+                    );
+                }
+                currentProvider = await window.APIKeyManager.getCurrentProvider();
+                hasLlmKey = !!currentProvider;
+            }
+        }
     } catch (e) {
         console.warn('[App] Error checking API key:', e);
         hasLlmKey = false;
@@ -671,6 +689,9 @@ async function hydrateSettingsFromBackend(force = false) {
     updateProviderOptions();
 
     if (settings.primary_model_provider) {
+        if (window.APIKeyManager?.setSelectedProvider) {
+            window.APIKeyManager.setSelectedProvider(settings.primary_model_provider);
+        }
         const providerSelect = document.getElementById('llm-provider-select');
         if (providerSelect) {
             providerSelect.value = settings.primary_model_provider;
@@ -682,6 +703,15 @@ async function hydrateSettingsFromBackend(force = false) {
     }
 
     if (settings.primary_model_name) {
+        if (
+            settings.primary_model_provider &&
+            typeof window.APIKeyManager?.setModelForProvider === 'function'
+        ) {
+            await window.APIKeyManager.setModelForProvider(
+                settings.primary_model_provider,
+                settings.primary_model_name
+            );
+        }
         const modelSelect = document.getElementById('llm-model-select');
         const modelInput = document.getElementById('llm-model-input');
         if (modelSelect && settings.primary_model_provider !== 'openrouter') {
