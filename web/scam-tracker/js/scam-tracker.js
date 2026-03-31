@@ -265,7 +265,7 @@ const ScamTrackerApp = {
     checkPROStatus() {
         const user = resolveScamTrackerCurrentUser();
         if (!user) {
-            window.location.href = '/static/forum/index.html';
+            window.location.href = '/static/index.html#forum';
             return;
         }
 

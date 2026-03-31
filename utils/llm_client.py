@@ -17,18 +17,9 @@ from core.model_config import (
 )
 
 # LangChain Imports
-try:
-    from langchain.chat_models import init_chat_model
-    from langchain_core.language_models import BaseChatModel
-    from langchain_core.messages import HumanMessage
-
-    LANGCHAIN_AVAILABLE = True
-except ImportError:
-    LANGCHAIN_AVAILABLE = False
-    BaseChatModel = None  # Define dummy if not available
-    print(
-        "Warning: langchain not installed. Please install langchain langchain-openai langchain-google-genai"
-    )
+from langchain.chat_models import init_chat_model
+from langchain_core.language_models import BaseChatModel
+from langchain_core.messages import HumanMessage
 
 # Import settings
 from utils.settings import Settings
@@ -91,9 +82,6 @@ class LLMClientFactory:
         Returns:
             BaseChatModel: A configured LangChain chat model.
         """
-        if not LANGCHAIN_AVAILABLE:
-            raise ImportError("LangChain is required. Please install it.")
-
         api_key = LLMClientFactory._get_api_key(provider)
 
         # Map internal provider names to LangChain init_chat_model providers
@@ -254,14 +242,3 @@ def create_llm_client_from_config(
 
     client = LLMClientFactory.create_client(provider_from_config, effective_model)
     return client, effective_model
-
-
-if __name__ == "__main__":
-    # Simple Test
-    try:
-        print("Testing OpenAI Client...")
-        llm = LLMClientFactory.create_client("openai", "gpt-5-mini")
-        res = llm.invoke([HumanMessage(content="Hello, say 'test'!")])
-        print(f"Response: {res.content}")
-    except Exception as e:
-        print(f"OpenAI Test Failed: {e}")

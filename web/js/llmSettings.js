@@ -318,13 +318,9 @@ async function saveLLMKey() {
             llmState.testPassedModel = '';
             disableSaveButton();
 
-            // 更新已保存的狀態（使用後端返回的格式）
-            llmState.savedKeys[provider] = {
-                has_key: true,
-                masked_key: apiKey.substring(0, 7) + '...' + apiKey.substring(apiKey.length - 4),
-                model: model,
-            };
-            updateBindingStatus();
+            // ✅ 修復：從後端重新載入狀態，而不是手動設置本地狀態
+            // 這確保 UI 顯示的狀態與後端實際保存的狀態一致
+            await loadSavedApiKeys();
 
             // 更新全局狀態
             if (typeof window.setKeyValidity === 'function') {

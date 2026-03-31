@@ -165,6 +165,21 @@ const ForumApp = {
                 this.updatePostFiltersUI();
             };
         }
+
+        // Also support the new clear-post-filters button in tab-forum
+        const clearPostFiltersAlt = document.getElementById('clear-post-filters');
+        if (clearPostFiltersAlt && clearPostFiltersAlt !== clearPostFilters) {
+            clearPostFiltersAlt.onclick = () => {
+                this.currentTagFilter = '';
+                const selectFilter = document.getElementById('category-filter');
+                if (selectFilter) selectFilter.value = '';
+                this.refreshIndexPage({ force: true });
+                this.updatePostFiltersUI();
+            };
+        }
+
+        // Bind category pill click handlers
+        this.bindCategoryPills();
     },
 
     getCurrentPostFilters() {
@@ -311,23 +326,20 @@ const ForumApp = {
 
         // Enhanced loading skeleton
         container.innerHTML = `
-            <div class="space-y-4">
+            <div class="space-y-3">
                 ${[1, 2, 3].map(() => `
-                    <div class="rounded-2xl border border-white/5 bg-surface/60 p-5 animate-pulse">
-                        <div class="flex items-start gap-4">
-                            <div class="w-12 h-12 rounded-xl bg-white/5"></div>
-                            <div class="flex-1 space-y-3">
-                                <div class="flex items-center gap-2">
-                                    <div class="h-3 w-20 rounded bg-white/5"></div>
-                                    <div class="h-5 w-16 rounded-full bg-white/5"></div>
-                                </div>
-                                <div class="h-5 w-3/4 rounded bg-white/5"></div>
-                                <div class="h-4 w-full rounded bg-white/5"></div>
-                                <div class="flex gap-2">
-                                    <div class="h-6 w-16 rounded-full bg-white/5"></div>
-                                    <div class="h-6 w-20 rounded-full bg-white/5"></div>
-                                </div>
-                            </div>
+                    <div class="rounded-2xl border border-white/5 bg-surface/60 p-4 animate-pulse">
+                        <div class="flex items-center gap-2 mb-3">
+                            <div class="h-4 w-14 rounded-full bg-white/5"></div>
+                            <div class="h-3 w-16 rounded bg-white/5"></div>
+                            <div class="h-3 w-10 rounded bg-white/5 ml-auto"></div>
+                        </div>
+                        <div class="h-5 w-3/4 rounded bg-white/5 mb-2.5"></div>
+                        <div class="h-4 w-1/2 rounded bg-white/5 mb-3"></div>
+                        <div class="flex gap-3 pt-3 border-t border-white/[0.03]">
+                            <div class="h-3 w-10 rounded bg-white/5"></div>
+                            <div class="h-3 w-10 rounded bg-white/5"></div>
+                            <div class="h-3 w-10 rounded bg-white/5"></div>
                         </div>
                     </div>
                 `).join('')}
@@ -374,26 +386,16 @@ const ForumApp = {
             posts.forEach((post, index) => {
                 const el = document.createElement('div');
                 const colors = CATEGORY_COLORS[(post.category || '').toLowerCase()] || DEFAULT_COLORS;
-                const isFirst = index === 0;
                 const isPinned = post.is_pinned || false;
 
-                // Enhanced card design with category accent
                 el.className = `
-                    group relative rounded-2xl border border-white/5 bg-surface/80 p-4 sm:p-5 cursor-pointer transition-all duration-200
-                    hover:bg-surface hover:border-white/10 hover:shadow-xl hover:shadow-primary/5
-                    ${isFirst ? 'ring-1 ring-primary/20' : ''}
-                    ${isPinned ? 'border-warning/30 bg-warning/5' : ''}
+                    group rounded-2xl border border-white/5 bg-surface/80 p-4 cursor-pointer transition-all duration-200
+                    hover:bg-surface hover:border-white/10
+                    ${isPinned ? 'border-l-2 border-l-warning/40 bg-warning/[0.02]' : ''}
                 `;
                 el.onclick = () => this.navigateToPost(post.id);
 
-                // Pinned indicator
-                const pinnedBadge = isPinned ? `
-                    <div class="absolute -top-2 -right-2 px-2.5 py-1 rounded-full bg-warning/20 border border-warning/30 text-warning text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
-                        <i data-lucide="pin" class="w-3 h-3"></i>置頂
-                    </div>
-                ` : '';
-
-                // 標籤 HTML
+                // Tags HTML
                 let tagsHtml = '';
                 try {
                     if (post.tags) {
@@ -414,69 +416,40 @@ const ForumApp = {
                 const booCount = Math.max(0, post.boo_count || 0);
                 const safeUsername = typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.username || post.user_id) : post.username || post.user_id;
                 const safeTitle = typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.title || '') : post.title || '';
-                const avatarLetter = (safeUsername[0] || '?').toUpperCase();
                 const categoryShort = (post.category || '').toLowerCase();
 
-                // Gradient accent based on category
-                const gradientAccent = `<div aria-hidden="true" class="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent ${colors.accent.replace('/', '-through ')} to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"></div>`;
+                const pinnedHtml = isPinned ? `
+                    <div class="flex items-center gap-1.5 mb-2 text-warning/70 text-[10px] font-bold uppercase tracking-wider">
+                        <i data-lucide="pin" class="w-3 h-3"></i>置頂
+                    </div>
+                ` : '';
+
+                const tipsHtml = post.tips_total > 0 ? `
+                    <span class="inline-flex items-center gap-1 text-primary/80">
+                        <i data-lucide="gift" class="w-3 h-3"></i>${post.tips_total} Pi
+                    </span>
+                ` : '';
 
                 el.innerHTML = `
-                    ${pinnedBadge}
-                    ${gradientAccent}
-                    <div class="flex items-start gap-4">
-                        <!-- Avatar -->
-                        <div class="relative">
-                            <div class="w-12 h-12 rounded-xl border border-white/5 bg-background/70 flex items-center justify-center text-sm font-bold ${colors.avatar} flex-shrink-0 shadow-lg">${avatarLetter}</div>
-                            ${isFirst ? '<div class="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-primary border-2 border-surface flex items-center justify-center" title="最新"><i data-lucide="zap" class="w-2.5 h-2.5 text-background"></i></div>' : ''}
-                        </div>
-
-                        <!-- Content -->
-                        <div class="flex-1 min-w-0">
-                            <!-- Header Row -->
-                            <div class="flex items-start justify-between gap-3 mb-2">
-                                <div class="min-w-0 flex-1">
-                                    <!-- User & Category -->
-                                    <div class="flex items-center gap-2.5 mb-2 flex-wrap">
-                                        <a href="/static/forum/profile.html?id=${post.user_id}" class="text-xs text-textMuted hover:text-primary transition truncate font-semibold flex items-center gap-1.5" onclick="event.stopPropagation()">
-                                            <span class="w-4 h-4 rounded bg-white/5 flex items-center justify-center text-[8px] font-bold">${avatarLetter}</span>
-                                            ${safeUsername}
-                                        </a>
-                                        <span class="inline-flex items-center rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.16em] ${colors.badge} shrink-0">${categoryShort}</span>
-                                    </div>
-                                    <!-- Title -->
-                                    <h3 class="font-bold text-secondary text-[15px] leading-snug sm:text-base group-hover:text-primary transition-colors line-clamp-2">${safeTitle}</h3>
-                                </div>
-                                <span class="text-[10px] text-textMuted/50 shrink-0 mt-0.5 flex items-center gap-1">
-                                    <i data-lucide="clock" class="w-3 h-3"></i>
-                                    ${date}
-                                </span>
-                            </div>
-
-                            <!-- Tags -->
-                            ${tagsHtml ? `<div class="flex flex-wrap gap-2 mb-3">${tagsHtml}</div>` : '<div class="mb-3"></div>'}
-
-                            <!-- Stats Row -->
-                            <div class="flex flex-wrap items-center gap-2.5 text-xs text-textMuted/70">
-                                <span class="inline-flex items-center gap-1.5 rounded-lg border border-white/5 bg-background/60 px-3 py-1.5 ${pushCount > 0 ? 'text-success/80 border-success/20' : ''}">
-                                    <i data-lucide="thumbs-up" class="h-3.5 w-3.5"></i>
-                                    <span class="font-medium">${pushCount}</span>
-                                </span>
-                                <span class="inline-flex items-center gap-1.5 rounded-lg border border-white/5 bg-background/60 px-3 py-1.5 ${booCount > 0 ? 'text-danger/80 border-danger/20' : ''}">
-                                    <i data-lucide="thumbs-down" class="h-3.5 w-3.5"></i>
-                                    <span class="font-medium">${booCount}</span>
-                                </span>
-                                <span class="inline-flex items-center gap-1.5 rounded-lg border border-white/5 bg-background/60 px-3 py-1.5">
-                                    <i data-lucide="message-circle" class="h-3.5 w-3.5"></i>
-                                    <span class="font-medium">${post.comment_count || 0}</span>
-                                </span>
-                                ${post.tips_total > 0 ? `
-                                <span class="inline-flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/10 px-3 py-1.5 text-primary/90">
-                                    <i data-lucide="gift" class="h-3.5 w-3.5"></i>
-                                    <span class="font-medium">${post.tips_total} Pi</span>
-                                </span>
-                                ` : ''}
-                            </div>
-                        </div>
+                    ${pinnedHtml}
+                    <div class="flex items-center gap-2 mb-2.5">
+                        <span class="text-[10px] font-bold uppercase tracking-[0.15em] px-2.5 py-1 rounded-full ${colors.badge}">${categoryShort || 'general'}</span>
+                        <a href="/static/forum/profile.html?id=${post.user_id}" class="text-xs text-textMuted/70 hover:text-primary transition truncate" onclick="event.stopPropagation()">${safeUsername}</a>
+                        <span class="text-[10px] text-textMuted/40 ml-auto shrink-0">${date}</span>
+                    </div>
+                    <h3 class="font-bold text-secondary text-[15px] leading-snug mb-2.5 group-hover:text-primary transition-colors line-clamp-2">${safeTitle}</h3>
+                    ${tagsHtml ? `<div class="flex flex-wrap gap-1.5 mb-3">${tagsHtml}</div>` : '<div class="mb-1"></div>'}
+                    <div class="flex items-center gap-3 text-[11px] text-textMuted/50 pt-3 border-t border-white/[0.03]">
+                        <span class="inline-flex items-center gap-1 ${pushCount > 0 ? 'text-success/70' : ''}">
+                            <i data-lucide="thumbs-up" class="w-3 h-3"></i>${pushCount}
+                        </span>
+                        <span class="inline-flex items-center gap-1 ${booCount > 0 ? 'text-danger/70' : ''}">
+                            <i data-lucide="thumbs-down" class="w-3 h-3"></i>${booCount}
+                        </span>
+                        <span class="inline-flex items-center gap-1">
+                            <i data-lucide="message-circle" class="w-3 h-3"></i>${post.comment_count || 0}
+                        </span>
+                        ${tipsHtml}
                     </div>
                 `;
                 container.appendChild(el);
@@ -507,7 +480,11 @@ const ForumApp = {
                 return;
             }
 
-            container.innerHTML = tags
+            const MAX_VISIBLE = 8;
+            const visible = tags.slice(0, MAX_VISIBLE);
+            const hidden = tags.slice(MAX_VISIBLE);
+
+            container.innerHTML = visible
                 .map((tag) => {
                     const safeName =
                         typeof SecurityUtils !== 'undefined'
@@ -516,11 +493,23 @@ const ForumApp = {
                     const isActive = this.currentTagFilter === tag.name;
 
                     return `<button type="button" data-tag="${safeName}"
-                        class="trending-tag shrink-0 inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-[11px] font-semibold whitespace-nowrap transition border-white/5 bg-white/5 text-textMuted ${isActive ? 'text-primary border-primary/20 bg-primary/10' : 'hover:text-secondary hover:border-white/10'}">
-                        <span>#${safeName}</span><span class="opacity-50 text-[10px]">${tag.post_count}</span>
+                        class="trending-tag shrink-0 max-w-[8.5rem] inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px] font-semibold overflow-hidden transition border-white/5 bg-white/5 text-textMuted ${isActive ? '!text-primary !border-primary/20 bg-primary/10' : 'hover:text-secondary hover:border-white/10'}">
+                        <span class="truncate">#${safeName}</span><span class="opacity-50 text-[10px] shrink-0 ml-0.5">${tag.post_count}</span>
                     </button>`;
                 })
-                .join('');
+                .join('') + (hidden.length > 0 ? `<button type="button" id="tags-expand-btn" class="shrink-0 inline-flex items-center gap-1 px-3 py-1.5 rounded-full border text-[11px] font-semibold transition border-white/5 bg-white/5 text-textMuted hover:text-primary hover:border-primary/20">+${hidden.length}</button>` : '') + `<div id="tags-extra" class="hidden flex items-center gap-2 flex-wrap">${hidden
+                    .map((tag) => {
+                        const safeName =
+                            typeof SecurityUtils !== 'undefined'
+                                ? SecurityUtils.escapeHTML(tag.name)
+                                : tag.name;
+                        const isActive = this.currentTagFilter === tag.name;
+                        return `<button type="button" data-tag="${safeName}"
+                            class="trending-tag shrink-0 max-w-[8.5rem] inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-[11px] font-semibold overflow-hidden transition border-white/5 bg-white/5 text-textMuted ${isActive ? 'text-primary border-primary/20 bg-primary/10' : 'hover:text-secondary hover:border-white/10'}">
+                            <span class="truncate">#${safeName}</span><span class="opacity-50 text-[10px] shrink-0 ml-0.5">${tag.post_count}</span>
+                        </button>`;
+                    })
+                    .join('')}</div>`;
 
             container.querySelectorAll('.trending-tag').forEach((button) => {
                 button.addEventListener('click', () => {
@@ -531,6 +520,22 @@ const ForumApp = {
                     this.updatePostFiltersUI();
                 });
             });
+
+            // Bind expand/collapse toggle
+            const expandBtn = container.querySelector('#tags-expand-btn');
+            const extraDiv = container.querySelector('#tags-extra');
+            if (expandBtn && extraDiv) {
+                let expanded = false;
+                expandBtn.addEventListener('click', () => {
+                    expanded = !expanded;
+                    extraDiv.classList.toggle('hidden', !expanded);
+                    extraDiv.classList.toggle('flex', expanded);
+                    expandBtn.innerHTML = expanded
+                        ? `<i data-lucide="chevron-up" class="w-3 h-3"></i> 收起`
+                        : `+${hidden.length}`;
+                    if (typeof lucide !== 'undefined') lucide.createIcons();
+                });
+            }
         } catch (e) {
             console.error('Failed to load tags', e);
             if (container) {
