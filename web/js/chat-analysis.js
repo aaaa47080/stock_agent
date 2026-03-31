@@ -86,6 +86,11 @@ function getSelectedUserModel(provider) {
     const savedModel = window.APIKeyManager?.getModelForProvider?.(provider);
     if (savedModel) return savedModel;
 
+    const llmSt = window.llmState;
+    if (llmSt?.savedKeys?.[provider]?.model) {
+        return llmSt.savedKeys[provider].model;
+    }
+
     const modelInput = document.getElementById('llm-model-input');
     const modelSelect = document.getElementById('llm-model-select');
 
@@ -497,6 +502,10 @@ window.currentAnalysisController = AppStore.get('currentAnalysisController');
                             true,
                             currentElapsed
                         );
+                        const chatContainer = document.getElementById('chat-messages');
+                        if (chatContainer) {
+                            chatContainer.scrollTop = chatContainer.scrollHeight;
+                        }
                     }
 
                     if (data.done) {
@@ -539,6 +548,11 @@ window.currentAnalysisController = AppStore.get('currentAnalysisController');
 
                         // Refresh sessions list (to update title if it was new)
                         loadSessions();
+
+                        const chatContainerDone = document.getElementById('chat-messages');
+                        if (chatContainerDone) {
+                            chatContainerDone.scrollTop = chatContainerDone.scrollHeight;
+                        }
                     }
 
                     if (data.error) {

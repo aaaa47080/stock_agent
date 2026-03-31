@@ -31,7 +31,13 @@ class WatcherAgent:
             )
 
             response = self.llm.invoke([HumanMessage(content=prompt)])
-            content = response.content.strip()
+            content = response.content
+            if isinstance(content, list):
+                content = "".join(
+                    part.get("text", "") if isinstance(part, dict) else str(part)
+                    for part in content
+                )
+            content = content.strip()
 
             # Parse JSON
             if "```json" in content:

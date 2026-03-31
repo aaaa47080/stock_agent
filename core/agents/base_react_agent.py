@@ -467,6 +467,11 @@ class BaseReActAgent:
             response = self.llm.invoke(messages)
             self._track_llm_usage(response)
             reply = response.content
+            if isinstance(reply, list):
+                reply = "".join(
+                    part.get("text", "") if isinstance(part, dict) else str(part)
+                    for part in reply
+                )
 
         return AgentResult(
             success=True,
@@ -486,6 +491,11 @@ class BaseReActAgent:
             response = self.llm.invoke(messages)
             self._track_llm_usage(response)
             reply = response.content
+            if isinstance(reply, list):
+                reply = "".join(
+                    part.get("text", "") if isinstance(part, dict) else str(part)
+                    for part in reply
+                )
         except Exception as e:
             logger.error(f"[{self.name}] LLM invocation failed: {e}")
             return self._error_result(str(e), language)

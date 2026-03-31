@@ -46,6 +46,11 @@ class LLMInvokeMixin(ManagerAgentMixin):
             else:
                 response = await asyncio.to_thread(llm.invoke, messages)
             content = response.content
+            if isinstance(content, list):
+                content = "".join(
+                    part.get("text", "") if isinstance(part, dict) else str(part)
+                    for part in content
+                )
             if len(content) >= CONTEXT_CHAR_BUDGET * 0.95:
                 logger.warning(
                     f"[Manager] Response near context budget: {len(content)} chars (budget: {CONTEXT_CHAR_BUDGET})"

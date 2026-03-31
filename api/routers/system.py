@@ -147,6 +147,11 @@ async def validate_key(
             timeout=15.0,
         )
         reply_text = response.content
+        if isinstance(reply_text, list):
+            reply_text = "".join(
+                part.get("text", "") if isinstance(part, dict) else str(part)
+                for part in reply_text
+            )
 
         return {
             "valid": True,

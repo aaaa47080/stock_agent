@@ -37,6 +37,37 @@ async function loadSavedApiKeys() {
         var data = await AppAPI.get('/api/user/api-keys');
         llmState.savedKeys = data.keys || {};
         console.log('[loadSavedApiKeys] Loaded saved keys:', llmState.savedKeys);
+
+        var activeProvider = null;
+        var entries = Object.entries(llmState.savedKeys);
+        for (var i = 0; i < entries.length; i++) {
+            var provider = entries[i][0];
+            var info = entries[i][1];
+            if (info.has_key) {
+                if (info.model) {
+                    if (typeof window.APIKeyManager?.setModelForProvider === 'function') {
+                        window.APIKeyManager.setModelForProvider(provider, info.model);
+                    }
+                }
+                if (!activeProvider) {
+                    activeProvider = provider;
+                }
+            }
+        }
+
+        var currentSelection = localStorage.getItem('user_selected_provider');
+        if (
+            currentSelection &&
+            llmState.savedKeys[currentSelection] &&
+            llmState.savedKeys[currentSelection].has_key
+        ) {
+            activeProvider = currentSelection;
+        }
+
+        if (activeProvider && typeof window.APIKeyManager?.setSelectedProvider === 'function') {
+            window.APIKeyManager.setSelectedProvider(activeProvider);
+        }
+
         updateBindingStatus();
     } catch (error) {
         console.error('[loadSavedApiKeys] Error:', error);

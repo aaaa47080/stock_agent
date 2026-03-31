@@ -537,7 +537,11 @@ synthesize_fallback:
   template: |
     用戶問題：{query}{memory_section}
 
-    請直接回答用戶的問題。如果是投資相關問題，請提供專業但中立的建議，並包含風險提示。
+    ## 對話歷史（供上下文參考）
+
+    {history}
+
+    請結合對話歷史的上下文直接回答用戶的問題。如果問題中有代詞（他、她、它、這個、那個等），請從歷史推斷所指對象。如果是投資相關問題，請提供專業但中立的建議，並包含風險提示。
 
 synthesize_runtime:
   description: "Manager runtime 綜合多個 sub-agent 結果"
@@ -546,6 +550,10 @@ synthesize_runtime:
 
     ## 用戶問題
     {query}{memory_block}
+
+    ## 對話歷史（供上下文參考）
+
+    {history}
 
     ## 分析模式
     {analysis_mode}

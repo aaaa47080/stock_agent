@@ -163,7 +163,13 @@ class ExperienceStore:
                 "Reply with only the numbers, comma-separated (e.g. '1,3')."
             )
             response = llm.invoke([HumanMessage(content=prompt)])
-            indices_str = response.content.strip()
+            indices_str = response.content
+            if isinstance(indices_str, list):
+                indices_str = "".join(
+                    part.get("text", "") if isinstance(part, dict) else str(part)
+                    for part in indices_str
+                )
+            indices_str = indices_str.strip()
             indices = [
                 int(x.strip()) - 1
                 for x in indices_str.split(",")
