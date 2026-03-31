@@ -15,179 +15,176 @@
     <script src="/static/config.js"></script>
     <script src="/static/js/logger.js"></script>
     <style>
-        .prose p {
-            margin-bottom: 1em;
-            line-height: 1.8;
-        }
-        .prose ul,
-        .prose ol {
-            margin-bottom: 1em;
-            padding-left: 1.5em;
-        }
-        .prose ul {
-            list-style-type: disc;
-        }
-        .prose ol {
-            list-style-type: decimal;
-        }
-        .prose h1,
-        .prose h2,
-        .prose h3 {
-            color: #f5f5f5;
-            font-weight: 800;
-            margin-top: 1.6em;
-            margin-bottom: 0.6em;
-            line-height: 1.3;
+        .prose p { margin-bottom: 1em; line-height: 1.8; }
+        .prose ul, .prose ol { margin-bottom: 1em; padding-left: 1.5em; }
+        .prose ul { list-style-type: disc; }
+        .prose ol { list-style-type: decimal; }
+        .prose h1, .prose h2, .prose h3 {
+            color: #f5f5f5; font-weight: 800;
+            margin-top: 1.6em; margin-bottom: 0.6em; line-height: 1.3;
         }
         .prose code {
-            background: rgba(255, 255, 255, 0.06);
-            border: 1px solid rgba(255, 255, 255, 0.06);
-            border-radius: 6px;
-            padding: 0.15em 0.4em;
-            font-family: 'JetBrains Mono', monospace;
+            background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 6px; padding: 0.15em 0.4em; font-family: 'JetBrains Mono', monospace;
         }
         .prose pre {
-            background: #0f0f15;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 14px;
-            padding: 1em 1.1em;
-            overflow-x: auto;
-            margin-bottom: 1em;
+            background: #0f0f15; border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 14px; padding: 1em 1.1em; overflow-x: auto; margin-bottom: 1em;
         }
-        .prose pre code {
-            background: transparent;
-            border: 0;
-            padding: 0;
-        }
+        .prose pre code { background: transparent; border: 0; padding: 0; }
         .prose blockquote {
-            margin: 1em 0;
-            padding: 0.9em 1em;
-            border-left: 3px solid #d4b693;
-            background: rgba(212, 182, 147, 0.06);
-            color: #c7c7d1;
+            margin: 1em 0; padding: 0.9em 1em;
+            border-left: 3px solid #d4b693; background: rgba(212,182,147,0.06); color: #c7c7d1;
+        }
+        .action-btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 16px; border-radius: 999px; font-size: 13px; font-weight: 700;
+            border: 1px solid; transition: all 0.18s; cursor: pointer; white-space: nowrap;
         }
     </style>
 </head>
 <body class="bg-background text-textMain min-h-screen flex flex-col" data-page="post" style="background:#0b0b12">
-    <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 top-0 h-[260px] bg-[linear-gradient(180deg,rgba(212,182,147,0.12),transparent)]"></div>
-    <nav class="sticky top-0 z-50 bg-surface/95 backdrop-blur-xl border-b border-white/5 px-4 py-3">
-        <div class="max-w-4xl mx-auto flex items-center justify-between">
-            <a href="/static/index.html#forum" id="forum-back-link" class="flex items-center gap-2 text-secondary font-bold hover:text-primary transition">
-                <i data-lucide="arrow-left" class="w-5 h-5"></i>
-                <span>返回論壇</span>
+    <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 top-0 h-[220px] bg-[linear-gradient(180deg,rgba(212,182,147,0.10),transparent)]"></div>
+
+    <!-- Nav -->
+    <nav class="sticky top-0 z-50 bg-background/95 backdrop-blur-xl border-b border-white/5 px-4 py-3">
+        <div class="max-w-2xl mx-auto flex items-center gap-3">
+            <a href="/static/index.html#forum" id="forum-back-link"
+               class="shrink-0 flex items-center gap-1.5 text-sm text-textMuted font-semibold hover:text-primary transition p-1.5 -ml-1.5 rounded-full hover:bg-white/5">
+                <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                <span>返回</span>
             </a>
-            <div class="font-bold text-lg text-primary tracking-wide">文章內容</div>
-            <div class="w-10"></div>
+            <span class="text-sm font-bold text-secondary truncate flex-1 text-center">文章內容</span>
+            <div class="w-14 shrink-0 flex justify-end gap-1" id="nav-author-actions"></div>
         </div>
     </nav>
 
-    <main class="flex-1 max-w-4xl mx-auto w-full px-2.5 pb-24 pt-4 md:px-6">
-        <article class="relative overflow-hidden rounded-[32px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] p-5 shadow-[0_20px_48px_rgba(0,0,0,0.24)] sm:p-7 mb-6 md:rounded-[34px]">
-            <div aria-hidden="true" class="pointer-events-none absolute -right-12 -top-12 h-28 w-28 rounded-full bg-primary/8 blur-3xl"></div>
-            <div class="flex flex-col gap-2.5 mb-5 text-sm sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3 sm:gap-y-2">
-                <span id="post-category" class="rounded-full border border-primary/25 bg-primary/12 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-primary">Analysis</span>
-                <div class="flex min-w-0 flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2.5">
-                    <span id="post-author" class="font-semibold text-secondary">User</span>
-                    <span class="hidden text-textMuted sm:inline">·</span>
-                    <span id="post-date" class="text-xs text-textMuted sm:text-sm">Date</span>
+    <main class="flex-1 max-w-2xl mx-auto w-full px-3 pb-24 pt-4 sm:px-4">
+
+        <!-- Article Card -->
+        <article class="rounded-[24px] border border-white/8 bg-surface/70 overflow-hidden mb-4">
+
+            <!-- Article Header -->
+            <div class="px-5 pt-5 pb-4 border-b border-white/5">
+                <div class="flex items-center gap-2 flex-wrap mb-3">
+                    <span id="post-category"
+                        class="shrink-0 text-[10px] font-bold uppercase tracking-[0.18em] px-3 py-1.5 rounded-full border border-primary/25 bg-primary/12 text-primary">
+                        Analysis
+                    </span>
+                    <a id="post-author" href="#" class="text-sm font-semibold text-secondary hover:text-primary transition truncate">User</a>
+                    <span class="text-textMuted/30 text-xs">·</span>
+                    <span id="post-date" class="text-xs text-textMuted/60">Date</span>
                 </div>
+                <h1 id="post-title" class="text-xl font-extrabold leading-tight text-textMain sm:text-2xl">載入中...</h1>
             </div>
 
-            <h1 id="post-title" class="mb-6 text-[1.85rem] font-extrabold leading-tight text-textMain md:text-[2.2rem]">Loading Title...</h1>
+            <!-- Article Body -->
+            <div class="px-5 py-5">
+                <div id="post-content" class="prose max-w-none text-[15px] leading-7 text-textMuted/90 mb-4"></div>
+                <div id="post-tags" class="flex flex-wrap gap-2"></div>
+            </div>
 
-            <div id="post-content" class="prose max-w-none text-textMuted text-[15px] leading-7 mb-6 rounded-[28px] border border-white/8 bg-background/40 px-5 py-5"></div>
-            <div id="post-tags" class="flex flex-wrap gap-2.5 mb-6"></div>
+            <!-- Action Bar -->
+            <div class="px-5 pb-5 pt-1 border-t border-white/5 flex flex-wrap items-center gap-2">
+                <!-- Votes -->
+                <button id="btn-push"
+                    class="action-btn border-white/8 bg-background/50 text-textMuted hover:text-success hover:border-success/30 hover:bg-success/8">
+                    <i data-lucide="thumbs-up" class="w-4 h-4"></i>
+                    <span id="stat-push">0</span>
+                </button>
+                <button id="btn-boo"
+                    class="action-btn border-white/8 bg-background/50 text-textMuted hover:text-danger hover:border-danger/30 hover:bg-danger/8">
+                    <i data-lucide="thumbs-down" class="w-4 h-4"></i>
+                    <span id="stat-boo">0</span>
+                </button>
 
-            <div class="flex flex-col gap-5 pt-5">
-                <div class="flex flex-wrap items-center gap-3 rounded-[28px] border border-white/8 bg-background/40 px-4 py-4">
-                    <button id="btn-push"
-                        class="inline-flex items-center gap-2.5 rounded-full border border-white/8 bg-background/60 px-4 py-2.5 text-textMuted hover:text-success transition group text-sm font-semibold">
-                        <i data-lucide="thumbs-up" class="w-5 h-5 group-hover:scale-110 transition"></i>
-                        <span id="stat-push">0</span>
-                    </button>
-                    <button id="btn-boo"
-                        class="inline-flex items-center gap-2.5 rounded-full border border-white/8 bg-background/60 px-4 py-2.5 text-textMuted hover:text-danger transition group text-sm font-semibold">
-                        <i data-lucide="thumbs-down" class="w-5 h-5 group-hover:scale-110 transition"></i>
-                        <span id="stat-boo">0</span>
-                    </button>
-                </div>
+                <div class="flex-1"></div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <button id="btn-reply"
-                        class="min-h-[52px] bg-white/5 hover:bg-white/10 text-secondary px-5 py-3.5 rounded-2xl flex items-center justify-center gap-2.5 transition text-sm font-bold min-w-0">
-                        <i data-lucide="message-square" class="w-4 h-4"></i> 回覆
-                    </button>
-                    <button id="btn-tip"
-                        class="min-h-[52px] bg-primary/12 hover:bg-primary/20 text-primary px-5 py-3.5 rounded-2xl flex items-center justify-center gap-2.5 transition text-sm font-bold min-w-0">
-                        <i data-lucide="gift" class="w-4 h-4"></i> 打賞 <span data-price="tip"><i data-lucide="loader"
-                                class="w-3 h-3 animate-spin inline-block"></i></span>
-                    </button>
-                    <button id="btn-report-post"
-                        class="sm:col-span-2 min-h-[52px] bg-white/5 hover:bg-danger/10 hover:text-danger text-textMuted px-5 py-3.5 rounded-2xl flex items-center justify-center gap-2.5 transition text-sm font-bold min-w-0">
-                        <i data-lucide="flag" class="w-4 h-4"></i> 檢舉
-                    </button>
-                </div>
+                <!-- Reply / Tip -->
+                <button id="btn-reply"
+                    class="action-btn border-white/8 bg-background/50 text-textMuted hover:text-secondary hover:border-white/15 hover:bg-white/5">
+                    <i data-lucide="message-square" class="w-4 h-4"></i>
+                    <span>回覆</span>
+                </button>
+                <button id="btn-tip"
+                    class="action-btn border-primary/20 bg-primary/10 text-primary hover:bg-primary/18 hover:border-primary/35">
+                    <i data-lucide="gift" class="w-4 h-4"></i>
+                    <span data-price="tip"><i data-lucide="loader" class="w-3 h-3 animate-spin inline-block"></i></span>
+                </button>
+                <button id="btn-report-post"
+                    class="action-btn border-white/8 bg-background/50 text-textMuted/50 hover:text-danger hover:border-danger/25 hover:bg-danger/8 !px-3">
+                    <i data-lucide="flag" class="w-4 h-4"></i>
+                </button>
             </div>
         </article>
 
-        <div id="reply-form" class="hidden rounded-[28px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] p-5 mb-6 animate-fade-in-down shadow-[0_14px_36px_rgba(0,0,0,0.16)]">
-            <h3 class="mb-4 font-bold text-secondary text-base">發表回覆</h3>
-            <textarea id="reply-content" class="mb-4 min-h-[120px] w-full rounded-[22px] border border-white/8 bg-surfaceHighlight/80 px-5 py-4 text-textMain outline-none ring-0 transition focus:border-primary" placeholder="分享你的想法..."></textarea>
-            <div class="flex justify-end gap-3">
-                <button onclick="document.getElementById('reply-form').classList.add('hidden')" class="px-5 py-2.5 text-sm text-textMuted hover:text-secondary">取消</button>
-                <button id="submit-reply" class="rounded-full bg-primary px-7 py-2.5 text-sm font-bold text-background transition hover:opacity-90">送出回覆</button>
+        <!-- Reply Form -->
+        <div id="reply-form" class="hidden rounded-[20px] border border-white/8 bg-surface/60 p-5 mb-4 animate-fade-in-down">
+            <h3 class="mb-3 font-bold text-secondary text-sm">發表回覆</h3>
+            <textarea id="reply-content"
+                class="mb-3 min-h-[110px] w-full rounded-[16px] border border-white/8 bg-background/60 px-4 py-3 text-textMain text-sm outline-none ring-0 transition focus:border-primary/50 placeholder-textMuted/40 resize-none"
+                placeholder="分享你的想法..."></textarea>
+            <div class="flex justify-end gap-2.5">
+                <button onclick="document.getElementById('reply-form').classList.add('hidden')"
+                    class="px-4 py-2 text-sm text-textMuted hover:text-secondary rounded-full hover:bg-white/5 transition">取消</button>
+                <button id="submit-reply"
+                    class="px-6 py-2 text-sm font-bold rounded-full bg-primary text-background hover:opacity-90 transition">送出回覆</button>
             </div>
         </div>
 
-        <section class="rounded-[32px] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.04),rgba(255,255,255,0.02))] p-6 shadow-[0_14px_36px_rgba(0,0,0,0.16)]">
-            <h3 class="mb-5 flex items-center gap-2.5 text-lg font-bold text-secondary">
-                <i data-lucide="message-circle" class="w-5 h-5"></i>
-                留言
-            </h3>
-            <div id="comments-list" class="space-y-4">
-                <div class="py-4 text-center text-textMuted">載入留言中...</div>
+        <!-- Comments -->
+        <section class="rounded-[20px] border border-white/8 bg-surface/50 overflow-hidden">
+            <div class="px-5 py-4 border-b border-white/5 flex items-center gap-2">
+                <i data-lucide="message-circle" class="w-4 h-4 text-textMuted/60"></i>
+                <h3 class="text-sm font-bold text-secondary">留言</h3>
+            </div>
+            <div id="comments-list" class="divide-y divide-white/[0.04] px-5">
+                <div class="py-6 text-center text-sm text-textMuted/50">載入留言中...</div>
             </div>
         </section>
     </main>
 
-    <div id="toast-container" role="status" aria-live="polite" aria-atomic="true" class="fixed z-[110] flex flex-col gap-3 pointer-events-none bottom-4 left-4 right-4 items-center md:bottom-auto md:top-24 md:left-auto md:right-4 md:items-end" style="bottom: var(--shell-toast-bottom, calc(1rem + env(safe-area-inset-bottom, 0px)));"></div>
+    <!-- Toast -->
+    <div id="toast-container" role="status" aria-live="polite" aria-atomic="true"
+        class="fixed z-[110] flex flex-col gap-3 pointer-events-none bottom-4 left-4 right-4 items-center md:bottom-auto md:top-24 md:left-auto md:right-4 md:items-end"
+        style="bottom: var(--shell-toast-bottom, calc(1rem + env(safe-area-inset-bottom, 0px)));"></div>
 
+    <!-- Confirm Modal -->
     <div id="confirm-modal" class="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
         <div class="bg-surface w-full max-w-sm p-6 rounded-3xl border border-white/10 shadow-2xl">
-            <div id="confirm-modal-icon" class="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-6 bg-warning/20">
-                <i data-lucide="alert-circle" class="w-8 h-8 text-warning"></i>
+            <div id="confirm-modal-icon" class="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-5 bg-warning/20">
+                <i data-lucide="alert-circle" class="w-7 h-7 text-warning"></i>
             </div>
-            <h3 id="confirm-modal-title" class="text-xl font-bold text-center text-secondary mb-2">Confirm</h3>
-            <p id="confirm-modal-message" class="text-textMuted text-center text-sm mb-6">Are you sure?</p>
+            <h3 id="confirm-modal-title" class="text-lg font-bold text-center text-secondary mb-2">Confirm</h3>
+            <p id="confirm-modal-message" class="text-textMuted text-center text-sm mb-5">Are you sure?</p>
             <div id="confirm-modal-buttons" class="flex gap-3">
                 <button id="confirm-modal-cancel" class="flex-1 py-3 bg-surfaceHighlight hover:bg-white/10 text-textMuted font-bold rounded-2xl transition border border-white/5">Cancel</button>
-                <button id="confirm-modal-confirm" class="flex-1 py-3 bg-primary hover:brightness-110 text-background font-bold rounded-2xl transition shadow-lg">Confirm</button>
+                <button id="confirm-modal-confirm" class="flex-1 py-3 bg-primary hover:brightness-110 text-background font-bold rounded-2xl transition">Confirm</button>
             </div>
         </div>
     </div>
 
+    <!-- Report Modal -->
     <div id="report-modal" class="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] hidden flex items-center justify-center p-4">
         <div class="bg-surface w-full max-w-md p-6 rounded-3xl border border-white/10 shadow-2xl">
-            <div class="flex items-center justify-between mb-6">
-                <h3 class="text-xl font-bold text-secondary flex items-center gap-2">
-                    <i data-lucide="flag" class="w-5 h-5 text-danger"></i> 檢舉內容
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="text-base font-bold text-secondary flex items-center gap-2">
+                    <i data-lucide="flag" class="w-4 h-4 text-danger"></i> 檢舉內容
                 </h3>
-                <button id="report-modal-close" class="text-textMuted hover:text-secondary">
+                <button id="report-modal-close" class="text-textMuted hover:text-secondary p-1 rounded-full hover:bg-white/5 transition">
                     <i data-lucide="x" class="w-5 h-5"></i>
                 </button>
             </div>
-
             <form id="report-form" class="space-y-4">
                 <input type="hidden" id="report-content-type" value="post">
                 <input type="hidden" id="report-content-id">
-                <div id="report-error" class="hidden bg-danger/10 border border-danger/20 text-danger text-sm p-3 rounded-xl mb-4 flex items-start gap-2">
+                <div id="report-error" class="hidden bg-danger/10 border border-danger/20 text-danger text-sm p-3 rounded-xl flex items-start gap-2">
                     <i data-lucide="alert-circle" class="w-4 h-4 mt-0.5 shrink-0"></i>
                     <span id="report-error-msg"></span>
                 </div>
-
                 <div>
-                    <label class="block text-sm font-medium text-textMuted mb-2">檢舉原因</label>
-                    <select id="report-type" required class="w-full bg-background border border-white/10 rounded-xl p-3 text-textMain focus:border-primary outline-none">
+                    <label class="block text-xs font-semibold text-textMuted mb-2">檢舉原因</label>
+                    <select id="report-type" required class="w-full bg-background border border-white/10 rounded-xl p-3 text-sm text-textMain focus:border-primary outline-none">
                         <option value="">請選擇原因</option>
                         <option value="spam">垃圾內容</option>
                         <option value="harassment">騷擾</option>
@@ -197,24 +194,20 @@
                         <option value="other">其他</option>
                     </select>
                 </div>
-
                 <div>
-                    <label class="block text-sm font-medium text-textMuted mb-2">補充說明 <span class="text-textMuted/60">(選填)</span></label>
-                    <textarea id="report-description" rows="3" class="w-full bg-background border border-white/10 rounded-xl p-3 text-textMain focus:border-primary outline-none resize-none" placeholder="請補充需要審核的重點"></textarea>
+                    <label class="block text-xs font-semibold text-textMuted mb-2">補充說明 <span class="text-textMuted/50">(選填)</span></label>
+                    <textarea id="report-description" rows="3"
+                        class="w-full bg-background border border-white/10 rounded-xl p-3 text-sm text-textMain focus:border-primary outline-none resize-none"
+                        placeholder="請補充需要審核的重點"></textarea>
                 </div>
-
-                <div class="text-xs text-textMuted bg-white/5 rounded-lg p-3">
-                    <p class="font-medium mb-1">檢舉提醒</p>
-                    <ul class="space-y-1 text-textMuted/80">
-                        <li>僅檢舉違反社群規範的內容</li>
-                        <li>惡意檢舉可能造成帳號限制</li>
-                        <li>每日檢舉次數依會員等級而定</li>
-                    </ul>
+                <div class="text-xs text-textMuted/70 bg-white/4 rounded-xl p-3 space-y-1">
+                    <p class="font-semibold mb-1">檢舉提醒</p>
+                    <p>· 僅檢舉違反社群規範的內容</p>
+                    <p>· 惡意檢舉可能造成帳號限制</p>
                 </div>
-
-                <div class="flex gap-3 pt-2">
-                    <button type="button" id="report-modal-cancel" class="flex-1 py-3 bg-surfaceHighlight hover:bg-white/10 text-textMuted font-bold rounded-2xl transition border border-white/5">取消</button>
-                    <button type="submit" class="flex-1 py-3 bg-danger hover:bg-danger/80 text-white font-bold rounded-2xl transition shadow-lg">送出檢舉</button>
+                <div class="flex gap-3 pt-1">
+                    <button type="button" id="report-modal-cancel" class="flex-1 py-3 bg-surfaceHighlight hover:bg-white/10 text-textMuted font-bold rounded-2xl transition border border-white/5 text-sm">取消</button>
+                    <button type="submit" class="flex-1 py-3 bg-danger hover:bg-danger/80 text-white font-bold rounded-2xl transition text-sm">送出檢舉</button>
                 </div>
             </form>
         </div>
@@ -230,14 +223,13 @@
     <script type="module" src="/static/js/auth.js?v=60"></script>
     <script type="module" src="/static/js/forum-config.js?v=3"></script>
     <script type="module" src="/static/js/forum-api.js?v=2"></script>
-    <script type="module" src="/static/js/forum-app.js?v=6"></script>
+    <script type="module" src="/static/js/forum-app.js?v=7"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
             const backLink = document.getElementById('forum-back-link');
             if (backLink) {
                 backLink.href = sessionStorage.getItem('forumBackHref') || '/static/index.html#forum';
             }
-
             if (typeof initializeAuth === 'function') await initializeAuth();
             if (typeof ForumApp !== 'undefined') ForumApp.init();
             initReportModal();
@@ -263,16 +255,10 @@
                 }
             });
 
-            const closeModal = () => {
-                modal.classList.add('hidden');
-                form.reset();
-            };
-
+            const closeModal = () => { modal.classList.add('hidden'); form.reset(); };
             closeBtn?.addEventListener('click', closeModal);
             cancelBtn?.addEventListener('click', closeModal);
-            modal?.addEventListener('click', (e) => {
-                if (e.target === modal) closeModal();
-            });
+            modal?.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
 
             form?.addEventListener('submit', async function (e) {
                 e.preventDefault();
@@ -287,44 +273,24 @@
                     if (errorDiv && errorMsg) {
                         errorMsg.textContent = msg;
                         errorDiv.classList.remove('hidden');
-                    } else {
-                        showToast(msg, 'error');
-                    }
+                    } else { showToast(msg, 'error'); }
                 };
 
-                if (!reportType) {
-                    showError('請先選擇檢舉原因');
-                    return;
-                }
-
+                if (!reportType) { showError('請先選擇檢舉原因'); return; }
                 if (errorDiv) errorDiv.classList.add('hidden');
 
                 try {
                     const token = (typeof AuthManager !== 'undefined' && AuthManager.currentUser?.accessToken) || localStorage.getItem('access_token');
-                    if (!token) {
-                        showToast('請先登入', 'error');
-                        return;
-                    }
+                    if (!token) { showToast('請先登入', 'error'); return; }
 
                     const response = await fetch('/api/governance/reports', {
                         method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
-                        },
-                        body: JSON.stringify({
-                            content_type: contentType,
-                            content_id: parseInt(contentId, 10),
-                            report_type: reportType,
-                            description
-                        })
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                        body: JSON.stringify({ content_type: contentType, content_id: parseInt(contentId, 10), report_type: reportType, description })
                     });
 
                     const result = await response.json();
-                    if (!response.ok || !result.success) {
-                        showError(result.detail || '送出檢舉失敗');
-                        return;
-                    }
+                    if (!response.ok || !result.success) { showError(result.detail || '送出檢舉失敗'); return; }
 
                     showToast('檢舉已送出', 'success');
                     closeModal();

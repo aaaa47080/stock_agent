@@ -593,26 +593,31 @@ const ForumApp = {
 
             document.title = `${post.title} - Pi Forum`;
 
-            document.getElementById('post-category').textContent = post.category;
+            // Update category badge text and color
+            const categoryEl = document.getElementById('post-category');
+            if (categoryEl) {
+                categoryEl.textContent = post.category;
+                const catColors = {
+                    analysis: 'border-amber-400/30 bg-amber-400/10 text-amber-300',
+                    question:  'border-blue-400/30 bg-blue-400/10 text-blue-300',
+                    tutorial:  'border-emerald-400/30 bg-emerald-400/10 text-emerald-300',
+                    news:      'border-violet-400/30 bg-violet-400/10 text-violet-300',
+                    chat:      'border-rose-400/30 bg-rose-400/10 text-rose-300',
+                    insight:   'border-cyan-400/30 bg-cyan-400/10 text-cyan-300',
+                };
+                const colorClass = catColors[(post.category || '').toLowerCase()] || 'border-primary/25 bg-primary/12 text-primary';
+                categoryEl.className = `shrink-0 text-[10px] font-bold uppercase tracking-[0.18em] px-3 py-1.5 rounded-full border ${colorClass}`;
+            }
             document.getElementById('post-title').textContent = post.title;
 
-            // 安全?�創建�??��??��??�止 XSS�?
-            const authorContainer = document.getElementById('post-author');
-            authorContainer.innerHTML = '';
-            if (typeof SecurityUtils !== 'undefined') {
-                const authorLink = SecurityUtils.createSafeLink(
-                    `/static/forum/profile.html?id=${SecurityUtils.encodeURL(post.user_id)}`,
-                    post.username || post.user_id,
-                    { className: 'hover:text-primary transition' }
-                );
-                authorContainer.appendChild(authorLink);
-            } else {
-                // Fallback: 使用 textContent
-                const authorLink = document.createElement('a');
-                authorLink.href = `/static/forum/profile.html?id=${encodeURIComponent(post.user_id)}`;
-                authorLink.textContent = post.username || post.user_id;
-                authorLink.className = 'hover:text-primary transition';
-                authorContainer.appendChild(authorLink);
+            // Set author link — post-author is now an <a> element directly
+            const authorEl = document.getElementById('post-author');
+            if (authorEl) {
+                const safeUserId = typeof SecurityUtils !== 'undefined'
+                    ? SecurityUtils.encodeURL(post.user_id)
+                    : encodeURIComponent(post.user_id);
+                authorEl.href = `/static/forum/profile.html?id=${safeUserId}`;
+                authorEl.textContent = post.username || post.user_id;
             }
 
             document.getElementById('post-date').textContent = formatTWDate(post.created_at, true);
@@ -660,36 +665,44 @@ const ForumApp = {
         const currentUserId = AuthManager.currentUser?.user_id || AuthManager.currentUser?.uid;
         const isAuthor = currentUserId && post.user_id && currentUserId === post.user_id;
 
-        // 尋找?�創建�??��?作�??�容??
+        // Use nav-author-actions container in the new nav bar layout
+        const navContainer = document.getElementById('nav-author-actions');
+        if (navContainer) {
+            navContainer.innerHTML = isAuthor ? `
+                <button id="btn-edit"
+                    class="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-background/50 px-3 py-1.5 text-xs font-bold text-secondary transition hover:bg-white/10">
+                    <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>編輯
+                </button>
+                <button id="btn-delete"
+                    class="inline-flex items-center gap-1.5 rounded-full border border-danger/20 bg-danger/8 px-3 py-1.5 text-xs font-bold text-danger transition hover:bg-danger/15">
+                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>刪除
+                </button>
+            ` : '';
+            return;
+        }
+
+        // Fallback: legacy author-actions container
         let actionsContainer = document.getElementById('author-actions');
         if (!actionsContainer) {
-            // ?��?題�??��??��?作�??�容??
             const titleEl = document.getElementById('post-title');
             if (titleEl) {
                 actionsContainer = document.createElement('div');
                 actionsContainer.id = 'author-actions';
-                actionsContainer.className = 'flex flex-wrap gap-2 mt-5 mb-2';
+                actionsContainer.className = 'flex flex-wrap gap-2 mt-4 mb-2';
                 titleEl.parentNode.insertBefore(actionsContainer, titleEl.nextSibling);
             }
         }
-
         if (actionsContainer) {
-            if (isAuthor) {
-                actionsContainer.innerHTML = `
-                    <button id="btn-edit"
-                        class="inline-flex items-center gap-2.5 rounded-full border border-white/10 bg-background/60 px-5 py-2.5 text-sm text-secondary transition hover:bg-white/10">
-                        <i data-lucide="edit-2" class="w-4 h-4"></i>
-                        <span>編輯</span>
-                    </button>
-                    <button id="btn-delete"
-                        class="inline-flex items-center gap-2.5 rounded-full border border-danger/25 bg-danger/10 px-5 py-2.5 text-sm text-danger transition hover:bg-danger/20">
-                        <i data-lucide="trash-2" class="w-4 h-4"></i>
-                        <span>刪除</span>
-                    </button>
-                `;
-            } else {
-                actionsContainer.innerHTML = '';
-            }
+            actionsContainer.innerHTML = isAuthor ? `
+                <button id="btn-edit"
+                    class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-background/60 px-4 py-2 text-sm text-secondary transition hover:bg-white/10">
+                    <i data-lucide="edit-2" class="w-4 h-4"></i>編輯
+                </button>
+                <button id="btn-delete"
+                    class="inline-flex items-center gap-2 rounded-full border border-danger/25 bg-danger/10 px-4 py-2 text-sm text-danger transition hover:bg-danger/20">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i>刪除
+                </button>
+            ` : '';
         }
     },
 
@@ -729,27 +742,32 @@ const ForumApp = {
             container.innerHTML = '';
 
             if (comments.length === 0) {
-                container.innerHTML = '<div class="text-center text-textMuted py-4">目前還沒有留言</div>';
+                container.innerHTML = '<div class="py-8 text-center text-sm text-textMuted/50">目前還沒有留言，來當第一個留言的人吧</div>';
                 return;
             }
 
             comments.forEach((comment) => {
-                if (comment.type !== 'comment') return; // ?�顯示�??��?�?
+                if (comment.type !== 'comment') return;
+
+                const safeUsername = typeof SecurityUtils !== 'undefined'
+                    ? SecurityUtils.escapeHTML(comment.username || comment.user_id)
+                    : comment.username || comment.user_id;
 
                 const el = document.createElement('div');
-                el.className =
-                    'rounded-[24px] border border-white/8 bg-background/40 px-5 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]';
+                el.className = 'py-4 first:pt-4 last:pb-4';
                 el.innerHTML = `
-                    <div class="mb-3 flex items-start justify-between gap-4">
-                        <a href="/static/forum/profile.html?id=${comment.user_id}" class="font-bold text-sm text-secondary hover:text-primary transition">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(comment.username || comment.user_id) : comment.username || comment.user_id}</a>
-                        <div class="flex items-center gap-3">
-                            <span class="text-xs text-textMuted/70">${formatTWDate(comment.created_at, true)}</span>
-                            <button data-report-type="comment" data-report-id="${comment.id}" class="rounded-full border border-white/8 bg-background/50 p-2 text-textMuted transition hover:text-danger hover:border-danger/25 hover:bg-danger/10 report-trigger" title="Report">
-                                <i data-lucide="flag" class="w-3.5 h-3.5"></i>
-                            </button>
+                    <div class="flex items-center justify-between gap-3 mb-2">
+                        <div class="flex items-center gap-2 min-w-0">
+                            <a href="/static/forum/profile.html?id=${comment.user_id}"
+                               class="text-sm font-bold text-secondary hover:text-primary transition truncate">${safeUsername}</a>
+                            <span class="text-[11px] text-textMuted/40 shrink-0">${formatTWDate(comment.created_at, true)}</span>
                         </div>
+                        <button data-report-type="comment" data-report-id="${comment.id}"
+                            class="shrink-0 p-1.5 rounded-full text-textMuted/30 hover:text-danger hover:bg-danger/10 transition report-trigger" title="檢舉">
+                            <i data-lucide="flag" class="w-3.5 h-3.5"></i>
+                        </button>
                     </div>
-                    <div class="text-sm leading-7 text-textMain/90">${escapeHtml(comment.content)}</div>
+                    <p class="text-sm leading-relaxed text-textMain/80">${escapeHtml(comment.content)}</p>
                 `;
                 container.appendChild(el);
             });
