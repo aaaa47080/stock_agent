@@ -595,12 +595,14 @@ class NodesMixin(ManagerAgentMixin):
             # 沒有執行結果，直接生成回應（注入長期記憶）
             lt_memory = self.get_long_term_memory_context()
             memory_section = f"\n\n## 用戶長期記憶\n{lt_memory}" if lt_memory else ""
+            history = state.get("history", "")
             prompt = PromptRegistry.render(
                 "manager",
                 "synthesize_fallback",
                 include_time=False,
                 query=current_query,
                 memory_section=memory_section,
+                history=history or "（無歷史記錄）",
             )
             try:
                 response = await self._llm_invoke(prompt, task_type="deep_analysis")
@@ -657,6 +659,7 @@ class NodesMixin(ManagerAgentMixin):
             include_time=False,
             query=current_query,
             memory_block=memory_block,
+            history=state.get("history", "") or "（無歷史記錄）",
             analysis_mode=analysis_mode,
             num_results=num_results,
             results=chr(10).join(results_text),

@@ -95,8 +95,14 @@ class ExecutionMixin(ManagerAgentMixin):
                 response = await self.llm.ainvoke(messages)
             else:
                 response = await asyncio.to_thread(self.llm.invoke, messages)
+            content = response.content
+            if isinstance(content, list):
+                content = "".join(
+                    part.get("text", "") if isinstance(part, dict) else str(part)
+                    for part in content
+                )
             return {
-                "message": response.content,
+                "message": content,
                 "success": True,
                 "data": {},
                 "quality": "pass",

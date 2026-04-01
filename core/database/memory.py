@@ -468,7 +468,12 @@ class MemoryStore:
         return "\n".join(lines)
 
     async def extract_facts_from_turn(
-        self, user_message: str, assistant_message: str, turn_index: int, llm: any
+        self,
+        user_message: str,
+        assistant_message: str,
+        turn_index: int,
+        llm: any,
+        tools_used: Optional[List[str]] = None,
     ) -> bool:
         """
         nanoclaw extract_memory 核心實作：
@@ -480,15 +485,20 @@ class MemoryStore:
             assistant_message: 助手回覆
             turn_index: 當前輪次編號
             llm: LangChain LLM 實例
+            tools_used: 本輪使用的工具列表
         """
         from langchain_core.messages import HumanMessage
 
         existing_facts = self.facts_to_text()
 
+        tools_section = ""
+        if tools_used:
+            tools_section = f"\n本輪使用工具：{', '.join(tools_used)}"
+
         prompt = f"""從以下最新對話輪次中提取重要事實。只提取「明確說出的」事實，不推斷。
 
 使用者說：{user_message}
-助手回覆：{assistant_message}
+助手回覆：{assistant_message}{tools_section}
 
 已存在事實（避免重複）：
 {existing_facts}
@@ -509,9 +519,13 @@ class MemoryStore:
 
         try:
             response = llm.invoke([HumanMessage(content=prompt)])
-            raw = response.content.strip()
-
-            # 解析 JSON
+            raw = response.content
+            if isinstance(raw, list):
+                raw = "".join(
+                    part.get("text", "") if isinstance(part, dict) else str(part)
+                    for part in raw
+                )
+            raw = raw.strip()
             json_match = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", raw)
             json_str = json_match.group(1).strip() if json_match else raw
             j_start = json_str.find("{")
@@ -658,7 +672,13 @@ Respond in this exact JSON format:
             from langchain_core.messages import HumanMessage
 
             response = llm.invoke([HumanMessage(content=prompt)])
-            content = response.content.strip()
+            content = response.content
+            if isinstance(content, list):
+                content = "".join(
+                    part.get("text", "") if isinstance(part, dict) else str(part)
+                    for part in content
+                )
+            content = content.strip()
 
             # 解析 JSON 響應
             # 嘗試從 markdown 代碼塊中提取 JSON

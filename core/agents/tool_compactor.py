@@ -236,19 +236,26 @@ class _CompactingToolWrapper(BaseTool):
     def last_stat(self, value: Optional[dict]) -> None:
         object.__setattr__(self, "_last_stat", value)
 
-    def invoke(self, input: Any, **kwargs: Any) -> Any:  # noqa: A002
+    def invoke(self, input: Any, config: Optional[Any] = None, **kwargs: Any) -> Any:  # noqa: A002
         start = time.monotonic()
         try:
-            raw = self._original.invoke(input, **kwargs)
+            invoke_kwargs = dict(kwargs)
+            if config is not None:
+                invoke_kwargs["config"] = config
+            raw = self._original.invoke(input, **invoke_kwargs)
             text = _to_str(raw)
             latency_ms = int((time.monotonic() - start) * 1000)
-            object.__setattr__(self, "_last_stat", {
-                "tool_name": getattr(self._original, "name", "unknown"),
-                "success": True,
-                "latency_ms": latency_ms,
-                "output_chars": len(text),
-                "error_type": None,
-            })
+            object.__setattr__(
+                self,
+                "_last_stat",
+                {
+                    "tool_name": getattr(self._original, "name", "unknown"),
+                    "success": True,
+                    "latency_ms": latency_ms,
+                    "output_chars": len(text),
+                    "error_type": None,
+                },
+            )
             if len(text) <= THRESHOLD:
                 return raw
             uid = _store_sync(
@@ -265,13 +272,17 @@ class _CompactingToolWrapper(BaseTool):
             )
         except Exception as exc:
             latency_ms = int((time.monotonic() - start) * 1000)
-            object.__setattr__(self, "_last_stat", {
-                "tool_name": getattr(self._original, "name", "unknown"),
-                "success": False,
-                "latency_ms": latency_ms,
-                "output_chars": 0,
-                "error_type": type(exc).__name__,
-            })
+            object.__setattr__(
+                self,
+                "_last_stat",
+                {
+                    "tool_name": getattr(self._original, "name", "unknown"),
+                    "success": False,
+                    "latency_ms": latency_ms,
+                    "output_chars": 0,
+                    "error_type": type(exc).__name__,
+                },
+            )
             raise
 
     def _run(self, *args: Any, **kwargs: Any) -> Any:  # noqa: A002
@@ -284,6 +295,17 @@ class _CompactingToolWrapper(BaseTool):
         if ainvoke is not None:
             return await ainvoke(*args, **kwargs)
         return self.invoke(*args, **kwargs)
+
+    async def ainvoke(
+        self, input: Any, config: Optional[Any] = None, **kwargs: Any
+    ) -> Any:  # noqa: A002
+        invoke_kwargs = dict(kwargs)
+        if config is not None:
+            invoke_kwargs["config"] = config
+        ainvoke = getattr(self._original, "ainvoke", None)
+        if ainvoke is not None:
+            return await ainvoke(input, **invoke_kwargs)
+        return self.invoke(input, config=config, **kwargs)
 
 
 def _compact_output(

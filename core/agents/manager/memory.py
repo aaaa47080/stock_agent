@@ -58,8 +58,8 @@ class MemoryMixin(ManagerAgentMixin):
         """
         from core.config import TEST_MODE
 
-        if TEST_MODE:
-            return False
+        if TEST_MODE and not getattr(self, "_force_memory_in_test", False):
+            return None
 
         if self._memory_store is None:
             try:
@@ -117,7 +117,9 @@ class MemoryMixin(ManagerAgentMixin):
         # ✅ nanoclaw extract_memory：每輪對話立即萃取結構化事實（背景執行）
         # 輕量操作，不需等到 consolidation threshold
         _rb(
-            self._extract_facts_background(user_message, assistant_response, turn_index)
+            self._extract_facts_background(
+                user_message, assistant_response, turn_index, tools_used
+            )
         )
         _rb(
             self._record_experience_background(
@@ -138,7 +140,11 @@ class MemoryMixin(ManagerAgentMixin):
             self._consolidation_task = _rb(self._background_memory_consolidation())
 
     async def _extract_facts_background(
-        self, user_message: str, assistant_response: str, turn_index: int
+        self,
+        user_message: str,
+        assistant_response: str,
+        turn_index: int,
+        tools_used: Optional[List[str]] = None,
     ) -> None:
         """背景執行 nanoclaw 事實萃取，不阻塞對話回應"""
         try:
@@ -150,6 +156,7 @@ class MemoryMixin(ManagerAgentMixin):
                 assistant_message=assistant_response,
                 turn_index=turn_index,
                 llm=self.llm,
+                tools_used=tools_used,
             )
         except Exception as e:
             logger.warning(f"[Manager] extract_facts_background failed: {e}")

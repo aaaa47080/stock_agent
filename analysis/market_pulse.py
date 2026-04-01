@@ -334,7 +334,13 @@ class MarketPulseAnalyzer:
         try:
             # LangChain Invoke
             response = self.client.invoke([HumanMessage(content=prompt)])
-            return extract_json_from_response(response.content)
+            raw_content = response.content
+            if isinstance(raw_content, list):
+                raw_content = "".join(
+                    part.get("text", "") if isinstance(part, dict) else str(part)
+                    for part in raw_content
+                )
+            return extract_json_from_response(raw_content)
 
         except Exception as e:
             logger.error(f"Error generating report: {e}")
