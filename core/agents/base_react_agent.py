@@ -293,11 +293,11 @@ class BaseReActAgent:
 
             # 提取最終消息 - 防禦性編程：確保 result 是 dict
             if isinstance(result, str):
-                # agent.invoke 返回了字串而非字典
-                reply = result
+                # Bug #9 fix: agent.invoke 返回字串表示格式異常，不應視為成功
+                logger.warning(f"[{self.name}] Agent returned string instead of dict")
                 return AgentResult(
-                    success=True,
-                    message=reply,
+                    success=False,
+                    message=f"Agent output format error: {result[:200]}",
                     agent_name=self.name,
                 )
             messages = result.get("messages", [])

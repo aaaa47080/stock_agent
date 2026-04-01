@@ -116,28 +116,57 @@ class MemoryMixin(ManagerAgentMixin):
 
         # ✅ nanoclaw extract_memory：每輪對話立即萃取結構化事實（背景執行）
         # 輕量操作，不需等到 consolidation threshold
-        _rb(
-            self._extract_facts_background(
-                user_message, assistant_response, turn_index, tools_used
-            )
-        )
-        _rb(
-            self._record_experience_background(
-                user_message, assistant_response, tools_used
-            )
-        )
+        # Bug #6 fix: 添加異常處理，避免背景任務失敗影響主流程
+        if _rb:
+            try:
+                _rb(
+                    self._extract_facts_background(
+                        user_message, assistant_response, turn_index, tools_used
+                    )
+                )
+            except Exception as e:
+                logger.warning(f"[Manager] Failed to schedule fact extraction: {e}")
+            try:
+                _rb(
+                    self._record_experience_background(
+                        user_message, assistant_response, tools_used
+                    )
+                )
+            except Exception as e:
+                logger.warning(f"[Manager] Failed to schedule experience recording: {e}")
+        else:
+            logger.warning("[Manager] _run_background not available, skipping async tasks")
 
-        # 計算未整合的消息數量
-        unconsolidated = self._message_count - self._last_consolidated_index
+        # 計算未整合的消息數量（從 DB 讀取 index 保持一致性）
+        memory_store = self._get_memory_store()
+        db_index = memory_store.get_last_consolidated_index() if memory_store else 0
+        unconsolidated = self._message_count - db_index
 
         # 達到閾值才觸發重量級 consolidation（摘要 + 長期記憶更新）
-        if unconsolidated >= MEMORY_CONSOLIDATION_THRESHOLD and not self._consolidating:
-            logger.info(
-                f"[Manager] Triggering memory consolidation: "
-                f"{unconsolidated} unconsolidated messages"
-            )
-            # 創建背景任務進行整合
-            self._consolidation_task = _rb(self._background_memory_consolidation())
+        # Bug fix: 先檢查再設 flag，確保原子性
+        if unconsolidated >= MEMORY_CONSOLIDATION_THRESHOLD:
+            async with self._consolidation_lock:
+                if self._consolidating:
+                    logger.debug("[Manager] Consolidation already in progress, skipping")
+                    return
+                self._consolidating = True
+                
+                # Bug #3 fix: 取消舊任務
+                if self._consolidation_task and not self._consolidation_task.done():
+                    self._consolidation_task.cancel()
+                    try:
+                        await self._consolidation_task
+                    except asyncio.CancelledError:
+                        pass
+                
+                logger.info(
+                    f"[Manager] Triggering memory consolidation: "
+                    f"{unconsolidated} unconsolidated messages"
+                )
+                # 在鎖內創建任務，確保只有一個任務在運行
+                self._consolidation_task = asyncio.create_task(
+                    self._background_memory_consolidation_unlocked()
+                )
 
     async def _extract_facts_background(
         self,
@@ -241,7 +270,10 @@ class MemoryMixin(ManagerAgentMixin):
             return False
 
         idle_time = time.time() - self._last_activity_time
-        unconsolidated = self._message_count - self._last_consolidated_index
+        # Bug #2 fix: 從 DB 讀取 index 保持一致性
+        memory_store = self._get_memory_store()
+        db_index = memory_store.get_last_consolidated_index() if memory_store else 0
+        unconsolidated = self._message_count - db_index
 
         # 閒置超過 5 分鐘且有未整合消息
         if idle_time >= MEMORY_IDLE_TIMEOUT and unconsolidated > 0:
@@ -259,27 +291,46 @@ class MemoryMixin(ManagerAgentMixin):
         Args:
             new_session_id: 新會話 ID
         """
-        # 整合舊會話的所有記憶
-        if self._message_count > self._last_consolidated_index:
+        # Bug #2 fix: 從 DB 讀取 index 保持一致性
+        memory_store = self._get_memory_store()
+        db_index = memory_store.get_last_consolidated_index() if memory_store else 0
+        if self._message_count > db_index:
             logger.info(
-                f"[Manager] Session switch: consolidating {self._message_count - self._last_consolidated_index} messages"
+                f"[Manager] Session switch: consolidating {self._message_count - db_index} messages"
             )
             await self.consolidate_session_memory()
+            # consolidation 後重新讀取 index
+            db_index = memory_store.get_last_consolidated_index() if memory_store else 0
+
+        # Bug #7 fix: DB schema 只有一個 entry per user（ON CONFLICT user_id）
+        # 切換 session 時要重置 DB entry，避免新 session 讀到舊 session 的 index
+        old_session_id = self.session_id
+        if memory_store:
+            # 創建臨時 MemoryStore 用新 session_id 來重置 DB entry
+            from core.database.memory import MemoryStore
+            try:
+                new_store = MemoryStore(self.user_id, new_session_id)
+                new_store.set_last_consolidated_index(0)
+            except Exception:
+                pass  # 忽略失敗
 
         # 切換到新會話
-        old_session_id = self.session_id
         self.session_id = new_session_id
 
         # 重置新會話的計數器
         self._message_count = 0
         self._last_consolidated_index = 0
         self._memory_store = None  # 重置記憶存儲以使用新 session_id
+        # 取消舊的 consolidation 任務
+        if hasattr(self, '_consolidation_task') and self._consolidation_task:
+            self._consolidation_task.cancel()
+            self._consolidation_task = None
 
         logger.info(f"[Manager] Switched session: {old_session_id} -> {new_session_id}")
 
     async def _background_memory_consolidation(self) -> bool:
         """
-        背景記憶整合（nanobot 風格）
+        背景記憶整合（nanobot 風格）- 獨立調用版本
 
         - 異步執行，不阻塞對話
         - 使用鎖防止重複整合
@@ -297,6 +348,21 @@ class MemoryMixin(ManagerAgentMixin):
                 return await self._do_consolidation(archive_all=False)
             finally:
                 self._consolidating = False
+
+    async def _background_memory_consolidation_unlocked(self) -> bool:
+        """
+        Bug #1 fix: 背景記憶整合（鎖已由調用方持有）
+
+        由 _track_conversation 在持有 _consolidation_lock 時調用。
+        不要再次獲取鎖，否則會死鎖。
+
+        Returns:
+            True 如果整合成功
+        """
+        try:
+            return await self._do_consolidation(archive_all=False)
+        finally:
+            self._consolidating = False
 
     async def _do_consolidation(self, archive_all: bool = False) -> bool:
         """

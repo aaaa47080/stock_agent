@@ -559,10 +559,9 @@ class MemoryStore:
 
         Returns:
             最後整合的索引
-        """
-        if self._last_consolidated_index is not None:
-            return self._last_consolidated_index
 
+        Bug #8 fix: 每次都從 DB 讀取，確保一致性
+        """
         result = DatabaseBase.query_one(
             """
             SELECT last_consolidated_index FROM user_memory_cache
@@ -581,8 +580,12 @@ class MemoryStore:
 
         Args:
             index: 新的索引位置
+
+        Raises:
+            Exception: 如果 DB 寫入失敗
+
+        Bug #4 fix: 先寫 DB，成功後才更新本地
         """
-        self._last_consolidated_index = index
         DatabaseBase.execute(
             """
             INSERT INTO user_memory_cache (user_id, session_id, last_consolidated_index, updated_at)
@@ -595,6 +598,8 @@ class MemoryStore:
             """,
             (self.user_id, self.session_id, index),
         )
+        # DB 寫入成功後才更新本地
+        self._last_consolidated_index = index
 
     # ==================== 記憶整合 ====================
 
