@@ -52,8 +52,9 @@ class MemoryMixin(ManagerAgentMixin):
     def _get_memory_store(self):
         """
         延遲初始化 MemoryStore
+        
         ✅ 跨 session 設計：記憶以 user_id 為主鍵，開新對話仍能讀到歷史記憶
-        session_id 只用於 write_long_term 時標記來源，讀取時不過濾
+        ✅ 啟動時同步 last_consolidated_index：避免 server 重啟後狀態丟失
         """
         from core.config import TEST_MODE
 
@@ -64,13 +65,19 @@ class MemoryMixin(ManagerAgentMixin):
             try:
                 from core.database.memory import MemoryStore
 
-                # 傳入 session_id 供寫入標記用，但讀取行為已改為跨 session
                 self._memory_store = MemoryStore(self.user_id, self.session_id)
+                
+                # 啟動時同步 index（避免 server 重啟後重複整合）
+                if self._last_consolidated_index == 0:
+                    db_index = self._memory_store.get_last_consolidated_index()
+                    if db_index > 0:
+                        self._last_consolidated_index = db_index
+                        logger.info(f"[Manager] Synced consolidation index from DB: {db_index}")
+                        
             except ImportError as e:
                 import logging
 
                 logging.getLogger(__name__).warning(f"Memory module not available: {e}")
-                # 設置為 None 表示記憶功能不可用
                 self._memory_store = False
         return self._memory_store
 
@@ -288,6 +295,10 @@ class MemoryMixin(ManagerAgentMixin):
         """
         執行實際的記憶整合
 
+        職責分離：
+        - ManagerAgent 負責計算要整合哪些消息
+        - MemoryStore 負責執行 LLM 整合並寫入 DB
+
         Args:
             archive_all: 是否整合所有消息
 
@@ -305,65 +316,53 @@ class MemoryMixin(ManagerAgentMixin):
             if not memory.conversation_history:
                 return True
 
-            # 計算要整合的消息範圍
+            # === ManagerAgent 負責計算切片 ===
             if archive_all:
                 messages_to_consolidate = memory.conversation_history
-                keep_count = 0
             else:
                 keep_count = MEMORY_CONSOLIDATION_THRESHOLD // 2
-                start_idx = self._last_consolidated_index
+                start_idx = memory_store.get_last_consolidated_index()
                 end_idx = len(memory.conversation_history) - keep_count
 
                 if end_idx <= start_idx:
-                    return True  # 沒有新消息需要整合
+                    logger.info("[Manager] No new messages to consolidate")
+                    return True
 
                 messages_to_consolidate = memory.conversation_history[start_idx:end_idx]
 
                 if not messages_to_consolidate:
                     return True
 
-            logger.info(
-                f"[Manager] Consolidating {len(messages_to_consolidate)} messages, "
-                f"keeping {keep_count} recent"
-            )
+                logger.info(
+                    f"[Manager] Consolidating {len(messages_to_consolidate)} messages "
+                    f"(offset={start_idx}, keep={keep_count})"
+                )
 
             # 準備訊息格式
-            messages = []
-            for i, msg in enumerate(messages_to_consolidate):
+            formatted_messages = []
+            for msg in messages_to_consolidate:
                 from datetime import datetime, timezone
 
-                messages.append(
+                formatted_messages.append(
                     {
                         "role": msg.get("role", "unknown"),
                         "content": msg.get("content", ""),
-                        "timestamp": datetime.now(timezone.utc).strftime(
-                            "%Y-%m-%d %H:%M"
-                        ),
-                        "tools_used": [],
+                        "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M"),
+                        "tools_used": msg.get("tools_used", []),
                     }
                 )
 
-            # 執行整合
+            # === MemoryStore 負責執行整合 ===
             success = await memory_store.consolidate(
-                messages=messages,
+                messages_to_consolidate=formatted_messages,
                 llm=self.llm,
-                memory_window=keep_count,
-                archive_all=archive_all,
             )
 
             if success:
-                # 更新整合索引
-                if archive_all:
-                    self._last_consolidated_index = len(memory.conversation_history)
-                else:
-                    self._last_consolidated_index = (
-                        len(memory.conversation_history) - keep_count
-                    )
-
-                logger.info(
-                    f"[Manager] Memory consolidation done: "
-                    f"last_consolidated_index={self._last_consolidated_index}"
-                )
+                # 更新本地 index（同步到 DB 由 MemoryStore 完成）
+                self._last_consolidated_index = len(memory.conversation_history)
+                memory_store.set_last_consolidated_index(self._last_consolidated_index)
+                logger.info(f"[Manager] Consolidation done, index={self._last_consolidated_index}")
 
             return success
 

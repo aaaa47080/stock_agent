@@ -586,55 +586,32 @@ class MemoryStore:
 
     async def consolidate(
         self,
-        messages: List[Dict[str, Any]],
+        messages_to_consolidate: List[Dict[str, Any]],
         llm: Any,
-        memory_window: int = 50,
-        archive_all: bool = False,
     ) -> bool:
         """
         整合對話歷史到長期記憶
 
-        使用 LLM 將對話歷史整合為結構化的長期記憶和歷史日誌。
+        職責分離：調用方負責計算要整合哪些消息，此方法只負責執行整合。
 
         Args:
-            messages: 對話消息列表
+            messages_to_consolidate: 需要整合的消息列表（由調用方計算切片）
             llm: LangChain LLM 實例
-            memory_window: 保留的最近消息數量
-            archive_all: 是否歸檔所有消息
 
         Returns:
             是否成功
         """
-        # 計算需要整合的消息範圍
-        if archive_all:
-            old_messages = messages
-            keep_count = 0
-            logger.info(
-                f"[MemoryStore] archive_all mode: consolidating {len(messages)} messages"
-            )
-        else:
-            keep_count = memory_window // 2
-            if len(messages) <= keep_count:
-                logger.info("[MemoryStore] Too few messages, skipping consolidation")
-                return True
+        if not messages_to_consolidate:
+            logger.info("[MemoryStore] No messages to consolidate")
+            return True
 
-            last_consolidated = self.get_last_consolidated_index()
-            if len(messages) - last_consolidated <= keep_count:
-                logger.info("[MemoryStore] No new messages to consolidate")
-                return True
-
-            old_messages = messages[last_consolidated:-keep_count]
-            if not old_messages:
-                return True
-
-            logger.info(
-                f"[MemoryStore] Consolidating {len(old_messages)} messages, "
-                f"keeping {keep_count}"
-            )
+        logger.info(
+            f"[MemoryStore] Consolidating {len(messages_to_consolidate)} messages"
+        )
 
         # 構建對話文本
         lines = []
-        for m in old_messages:
+        for m in messages_to_consolidate:
             content = m.get("content", "")
             if not content:
                 continue
@@ -715,11 +692,7 @@ Respond in this exact JSON format:
                 if update != current_memory:
                     self.write_long_term(update)
 
-            # 更新整合索引
-            new_index = 0 if archive_all else len(messages) - keep_count
-            self.set_last_consolidated_index(new_index)
-
-            # Write compact session state
+            # 保存 compact session state
             compact_data = result.get("compact_state")
             if compact_data and isinstance(compact_data, dict):
                 try:
@@ -728,7 +701,7 @@ Respond in this exact JSON format:
                         progress=str(compact_data.get("progress", "")),
                         open_questions=str(compact_data.get("open_questions", "")),
                         next_steps=str(compact_data.get("next_steps", "")),
-                        turn_index=new_index,
+                        turn_index=len(messages_to_consolidate),
                         updated_at=datetime.now(timezone.utc).isoformat(),
                     )
                     self.write_compact_state(state)
@@ -739,10 +712,7 @@ Respond in this exact JSON format:
                     "[MemoryStore] compact_state absent from LLM consolidation response"
                 )
 
-            logger.info(
-                f"[MemoryStore] Consolidation done: {len(messages)} messages, "
-                f"last_consolidated={new_index}"
-            )
+            logger.info(f"[MemoryStore] Consolidation done: {len(messages_to_consolidate)} messages")
             return True
 
         except json.JSONDecodeError as e:
