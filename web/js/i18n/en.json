@@ -42,6 +42,7 @@
     "commodity": "Commodity",
     "forex": "Forex",
     "hkstock": "HK Stock",
+    "astock": "A Share",
     "admin": "Admin"
   },
   "sidebar": {

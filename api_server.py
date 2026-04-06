@@ -63,6 +63,7 @@ from api.lifespan import lifespan
 from api.middleware_setup import setup_middleware
 from api.routers import (
     analysis,
+    astock,
     commodity,
     forex,
     hkstock,
@@ -106,6 +107,7 @@ app.include_router(usstock.router)
 app.include_router(commodity.router)
 app.include_router(forex.router)
 app.include_router(hkstock.router)  # 港股 API
+app.include_router(astock.router)   # A 股 API
 app.include_router(user.router)
 app.include_router(health_router)  # Health check endpoints
 app.include_router(forum_router)  # 論壇 API
