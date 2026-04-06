@@ -39,6 +39,7 @@ const NAV_ITEMS = [
     { id: 'astock',    icon: 'building-2',       label: 'A股',       i18nKey: 'nav.astock',    defaultEnabled: true },
     { id: 'jpstock',   icon: 'sun',              label: '日股',      i18nKey: 'nav.jpstock',   defaultEnabled: true },
     { id: 'instock',   icon: 'flame',            label: '印度股',    i18nKey: 'nav.instock',   defaultEnabled: true },
+    { id: 'krstock',   icon: 'flag',             label: '韓股',      i18nKey: 'nav.krstock',   defaultEnabled: true },
     {
         id: 'friends',
         icon: 'users',
@@ -85,7 +86,7 @@ const NAV_ITEMS = [
  */
 const NavPreferences = {
     STORAGE_KEY: 'userNavPreferences',
-    PREFERENCES_VERSION: 11,  // v11: 新增 instock 印度股板塊
+    PREFERENCES_VERSION: 12,  // v12: 新增 krstock 韓股板塊
     MIN_ENABLED_ITEMS: 2,
     _cache: null,
 

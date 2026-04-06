@@ -48,6 +48,11 @@
             refreshSeconds: 30,
             timezone: 'Asia/Kolkata',
         },
+        krstock: {
+            label: 'Korea Stock',
+            refreshSeconds: 30,
+            timezone: 'Asia/Seoul',
+        },
     };
 
     const HOLIDAY_CALENDAR = {
@@ -655,6 +660,29 @@
         return state;
     }
 
+    function getKRStockState(config, parts) {
+        // KRX (KOSPI/KOSDAQ): 9:00-15:30 KST (no lunch break since 2016)
+        const minute = minutesSinceMidnight(parts);
+        let state;
+        if (!isWeekday(parts)) {
+            state = createState(config, { summary: t('status.marketClosed'), detail: t('status.weekendPaused') });
+        } else if (minute >= 9 * 60 && minute < 15 * 60 + 30) {
+            state = createState(config, {
+                isOpen: true,
+                summary: '韓股 Open',
+                detail: t('status.liveUpdate'),
+                refreshLabel: t('status.autoUpdate', { seconds: config.refreshSeconds }),
+                statusTone: 'open',
+                sessionType: 'regular',
+            });
+        } else if (minute >= 8 * 60 + 30 && minute < 9 * 60) {
+            state = createState(config, { summary: t('status.preMarket'), detail: '9:00 開市', sessionType: 'preopen' });
+        } else {
+            state = createState(config, { summary: t('status.marketClosed'), detail: t('status.paused') });
+        }
+        return state;
+    }
+
     function getUSStockState(config, parts) {
         const dateKey = getDateKey(parts);
         const minute = minutesSinceMidnight(parts);
@@ -769,6 +797,9 @@
         }
         if (marketType === 'instock') {
             return getINStockState(config, parts);
+        }
+        if (marketType === 'krstock') {
+            return getKRStockState(config, parts);
         }
 
         return createState(config);

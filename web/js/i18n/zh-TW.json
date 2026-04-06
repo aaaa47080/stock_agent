@@ -45,6 +45,7 @@
     "astock": "A股",
     "jpstock": "日股",
     "instock": "印度股",
+    "krstock": "韓股",
     "admin": "管理後台"
   },
   "sidebar": {

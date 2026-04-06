@@ -11,7 +11,7 @@ function getActiveTab() {
 }
 
 var VALID_TABS = [
-    'chat', 'crypto', 'twstock', 'usstock', 'commodity', 'forex', 'hkstock', 'astock', 'jpstock', 'instock',
+    'chat', 'crypto', 'twstock', 'usstock', 'commodity', 'forex', 'hkstock', 'astock', 'jpstock', 'instock', 'krstock',
     'wallet', 'friends', 'forum', 'safety', 'settings', 'admin',
 ];
 
@@ -226,6 +226,7 @@ async function executeTabSwitch(tabId, fromPopState = false) {
     if (tabId === 'astock'  && typeof AStockTab  !== 'undefined') AStockTab.init();
     if (tabId === 'jpstock' && typeof JPStockTab !== 'undefined') JPStockTab.init();
     if (tabId === 'instock' && typeof INStockTab !== 'undefined') INStockTab.init();
+    if (tabId === 'krstock' && typeof KRStockTab !== 'undefined') KRStockTab.init();
     if (tabId === 'wallet') {
         if (window.WalletApp) window.WalletApp.init();
     }
@@ -306,6 +307,7 @@ function restoreUiStateAfterResume() {
         'astock',
         'jpstock',
         'instock',
+        'krstock',
         'wallet',
         'friends',
         'forum',

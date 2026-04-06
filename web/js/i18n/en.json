@@ -45,6 +45,7 @@
     "astock": "A Share",
     "jpstock": "JP Stock",
     "instock": "India Stock",
+    "krstock": "Korea Stock",
     "admin": "Admin"
   },
   "sidebar": {
