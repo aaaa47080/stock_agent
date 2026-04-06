@@ -164,9 +164,15 @@ Phase 1（目前）
   ✅ Onboarding banner（無 Key 時引導設定）
   ✅ friends/forum 預設隱藏（可從 Customize 手動開啟）
 
-Phase 2（下一步）
-  ○ 商品/外匯可自選標的
-  ○ AI Chat 觸發跨板塊分析
-  ○ 對話歷史持久化
-  ○ 社群功能（論壇 + 好友）獨立品牌或開放
+Phase 2（✅ 完成 2026-04）
+  ✅ 商品/外匯可自選標的（showPicker + localStorage）
+  ✅ AI Chat 觸發跨板塊導航（keyword 偵測 + resolved_market chip）
+  ✅ 對話歷史持久化（localStorage + initChat 自動還原）
+  ⏸ 社群功能（論壇 + 好友）— 等核心穩定後再開放
+
+Phase 3（待排）
+  ○ 台股/美股自選自選清單（同 commodity/forex 模式）
+  ○ 即時價格推播通知（Pi 原生通知 or WebSocket）
+  ○ AI 分析報告匯出（PDF / 截圖）
+  ○ 多語言完善（EN / zh-TW / zh-CN）
 ```

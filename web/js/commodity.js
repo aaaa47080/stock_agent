@@ -98,15 +98,6 @@ const CommodityTab = {
         this.renderMarket();
     },
 
-    DEFAULT_SYMBOLS: [
-        { symbol: 'GC=F',  name: t('commodity.gold'),     unit: 'USD/oz'    },
-        { symbol: 'CL=F',  name: t('commodity.wtiCrude'), unit: 'USD/bbl'   },
-        { symbol: 'SI=F',  name: t('commodity.silver'),   unit: 'USD/oz'    },
-        { symbol: 'NG=F',  name: t('commodity.naturalGas'), unit: 'USD/MMBtu'},
-        { symbol: 'HG=F',  name: t('commodity.copper'),   unit: 'USD/lb'    },
-        { symbol: 'BZ=F',  name: t('commodity.brentCrude'), unit: 'USD/bbl' },
-    ],
-
     // ── Init ──────────────────────────────────────────────────
 
     init: function () {

@@ -95,15 +95,6 @@ const ForexTab = {
         this.renderMarket();
     },
 
-    DEFAULT_PAIRS: [
-        { symbol: 'TWD=X',    name: 'USD/TWD', desc: t('forex.usdTwd') },
-        { symbol: 'EURUSD=X', name: 'EUR/USD', desc: t('forex.eurUsd') },
-        { symbol: 'GBPUSD=X', name: 'GBP/USD', desc: t('forex.gbpUsd') },
-        { symbol: 'JPY=X',    name: 'USD/JPY', desc: t('forex.usdJpy') },
-        { symbol: 'AUDUSD=X', name: 'AUD/USD', desc: t('forex.audUsd') },
-        { symbol: 'CNY=X',    name: 'USD/CNY', desc: t('forex.usdCny')},
-    ],
-
     // ── Init ──────────────────────────────────────────────────
 
     init: function () {
@@ -167,9 +158,9 @@ const ForexTab = {
                 const isUp   = item.changePercent >= 0;
                 const color  = isUp ? 'text-success' : 'text-danger';
                 const arrow  = isUp ? '▲' : '▼';
-                // Find display info
-                const meta   = this.DEFAULT_PAIRS.find(p => p.symbol === item.symbol);
-                const desc   = meta?.desc || item.name;
+                // Find display info (covers all 15 AVAILABLE_PAIRS)
+                const meta   = this.AVAILABLE_PAIRS.find(p => p.symbol === item.symbol);
+                const desc   = meta?.name || item.name;
 
                 const card = document.createElement('div');
                 card.className = 'bg-surface border border-white/5 rounded-2xl p-4 flex items-center justify-between cursor-pointer hover:border-primary/30 transition';
