@@ -33,8 +33,9 @@ const NAV_ITEMS = [
         i18nKey: 'nav.wallet',
         defaultEnabled: true,
     },
-    { id: 'commodity', icon: 'bar-chart-2', label: 'Commodity', i18nKey: 'nav.commodity', defaultEnabled: true },
-    { id: 'forex',     icon: 'arrow-left-right', label: 'Forex', i18nKey: 'nav.forex', defaultEnabled: true },
+    { id: 'commodity', icon: 'bar-chart-2',      label: 'Commodity', i18nKey: 'nav.commodity', defaultEnabled: true },
+    { id: 'forex',     icon: 'arrow-left-right', label: 'Forex',     i18nKey: 'nav.forex',     defaultEnabled: true },
+    { id: 'hkstock',   icon: 'landmark',         label: '港股',      i18nKey: 'nav.hkstock',   defaultEnabled: true },
     {
         id: 'friends',
         icon: 'users',
@@ -81,7 +82,7 @@ const NAV_ITEMS = [
  */
 const NavPreferences = {
     STORAGE_KEY: 'userNavPreferences',
-    PREFERENCES_VERSION: 7,  // v7: safety 改為 defaultEnabled:false
+    PREFERENCES_VERSION: 8,  // v8: 新增 hkstock 港股板塊
     MIN_ENABLED_ITEMS: 2,
     _cache: null,
 

@@ -41,6 +41,7 @@
     "usstock": "美股",
     "commodity": "大宗商品",
     "forex": "外匯",
+    "hkstock": "港股",
     "admin": "管理後台"
   },
   "sidebar": {

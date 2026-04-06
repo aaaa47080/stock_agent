@@ -65,6 +65,7 @@ from api.routers import (
     analysis,
     commodity,
     forex,
+    hkstock,
     market,
     system,
     twstock,
@@ -104,6 +105,7 @@ app.include_router(twstock.router)
 app.include_router(usstock.router)
 app.include_router(commodity.router)
 app.include_router(forex.router)
+app.include_router(hkstock.router)  # 港股 API
 app.include_router(user.router)
 app.include_router(health_router)  # Health check endpoints
 app.include_router(forum_router)  # 論壇 API

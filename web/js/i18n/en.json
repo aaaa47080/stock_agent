@@ -41,6 +41,7 @@
     "usstock": "US Stock",
     "commodity": "Commodity",
     "forex": "Forex",
+    "hkstock": "HK Stock",
     "admin": "Admin"
   },
   "sidebar": {
