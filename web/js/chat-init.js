@@ -78,11 +78,22 @@ async function initChat() {
     }
 
     if (sessions && sessions.length > 0) {
-        // 有現有 sessions，但顯示歡迎畫面而不是自動載入最近的對話
-        window.currentSessionId = null; // Don't auto-load the previous session
-        console.log('initChat: showing clean chat room, not auto-loading previous session');
-        // 顯示歡迎畫面，讓用戶選擇是否要載入之前的對話
-        showWelcomeScreen();
+        // 嘗試還原上次使用的 session（localStorage → sessionStorage 降序優先）
+        const savedId =
+            (() => { try { return localStorage.getItem('chat_last_session_id'); } catch (_) { return null; } })() ||
+            AppStore.get('currentSessionId');
+        const matchedSession = savedId && sessions.find((s) => s.id === savedId);
+        if (matchedSession) {
+            console.log('initChat: restoring last session', savedId);
+            window.currentSessionId = matchedSession.id;
+            AppStore.set('currentSessionId', matchedSession.id);
+            updateSessionActiveState(matchedSession.id);
+            await loadChatHistory(matchedSession.id);
+        } else {
+            // 沒有上次記錄，顯示歡迎畫面讓用戶自行選擇
+            window.currentSessionId = null;
+            showWelcomeScreen();
+        }
     } else {
         // 沒有 session，設定為 null (Lazy Creation)
         window.currentSessionId = null;

@@ -11,13 +11,100 @@ const CommodityTab = {
     currentInterval: '1d',
     lastUpdatedAt: null,
 
+    // ── 可選標的完整清單（分組）─────────────────────────────────
+    AVAILABLE_SYMBOLS: [
+        { symbol: 'GC=F',  name: '黃金 Gold',       unit: 'USD/oz',    group: '貴金屬' },
+        { symbol: 'SI=F',  name: '白銀 Silver',      unit: 'USD/oz',    group: '貴金屬' },
+        { symbol: 'PL=F',  name: '鉑金 Platinum',    unit: 'USD/oz',    group: '貴金屬' },
+        { symbol: 'PA=F',  name: '鈀金 Palladium',   unit: 'USD/oz',    group: '貴金屬' },
+        { symbol: 'CL=F',  name: 'WTI 原油',         unit: 'USD/bbl',   group: '能源' },
+        { symbol: 'BZ=F',  name: '布蘭特原油 Brent', unit: 'USD/bbl',   group: '能源' },
+        { symbol: 'NG=F',  name: '天然氣 Nat.Gas',   unit: 'USD/MMBtu', group: '能源' },
+        { symbol: 'HG=F',  name: '銅 Copper',        unit: 'USD/lb',    group: '工業金屬' },
+        { symbol: 'ALI=F', name: '鋁 Aluminum',      unit: 'USD/lb',    group: '工業金屬' },
+        { symbol: 'ZW=F',  name: '小麥 Wheat',       unit: 'USD/bu',    group: '農產品' },
+        { symbol: 'ZC=F',  name: '玉米 Corn',        unit: 'USD/bu',    group: '農產品' },
+        { symbol: 'ZS=F',  name: '黃豆 Soybeans',    unit: 'USD/bu',    group: '農產品' },
+        { symbol: 'KC=F',  name: '咖啡 Coffee',      unit: 'USD/lb',    group: '農產品' },
+        { symbol: 'SB=F',  name: '糖 Sugar',         unit: 'USD/lb',    group: '農產品' },
+        { symbol: 'CT=F',  name: '棉花 Cotton',      unit: 'USD/lb',    group: '農產品' },
+    ],
+    STORAGE_KEY: 'commodity_selected_symbols',
+    DEFAULT_SELECTED: ['GC=F', 'SI=F', 'CL=F', 'BZ=F', 'NG=F', 'HG=F'],
+
+    getActiveSymbols() {
+        try {
+            const saved = localStorage.getItem(this.STORAGE_KEY);
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+            }
+        } catch (_) {}
+        return [...this.DEFAULT_SELECTED];
+    },
+
+    _saveActiveSymbols(symbols) {
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(symbols));
+    },
+
+    showPicker() {
+        const listEl = document.getElementById('commodity-list');
+        if (!listEl) return;
+        const selected = new Set(this.getActiveSymbols());
+        const groups = {};
+        this.AVAILABLE_SYMBOLS.forEach(s => {
+            if (!groups[s.group]) groups[s.group] = [];
+            groups[s.group].push(s);
+        });
+        listEl.innerHTML = `
+            <div>
+                <p class="text-xs text-textMuted mb-4">勾選要顯示的商品（至少 1 個）</p>
+                ${Object.entries(groups).map(([group, syms]) => `
+                    <div class="mb-5">
+                        <div class="text-[10px] uppercase tracking-wider text-textMuted/50 mb-2 pl-1">${group}</div>
+                        <div class="space-y-2">
+                            ${syms.map(s => `
+                                <label class="flex items-center justify-between bg-surface border ${selected.has(s.symbol) ? 'border-primary/40 bg-primary/5' : 'border-white/5'} rounded-xl px-4 py-3 cursor-pointer hover:border-primary/30 transition">
+                                    <div>
+                                        <span class="text-sm font-bold text-secondary">${escapeHtml(s.name)}</span>
+                                        <span class="text-xs text-textMuted ml-2">${s.unit}</span>
+                                    </div>
+                                    <input type="checkbox" value="${s.symbol}" ${selected.has(s.symbol) ? 'checked' : ''}
+                                        class="commodity-sym-check w-4 h-4 accent-primary">
+                                </label>`).join('')}
+                        </div>
+                    </div>`).join('')}
+                <div class="flex gap-2 mt-2 pb-4">
+                    <button onclick="CommodityTab.renderMarket()"
+                        class="flex-1 py-3 bg-surface border border-white/10 text-textMuted font-bold rounded-xl hover:bg-surfaceHighlight transition text-sm">
+                        取消
+                    </button>
+                    <button onclick="CommodityTab._applyPicker()"
+                        class="flex-1 py-3 bg-primary text-background font-bold rounded-xl hover:opacity-90 transition text-sm">
+                        確認套用
+                    </button>
+                </div>
+            </div>`;
+    },
+
+    _applyPicker() {
+        const checks = document.querySelectorAll('.commodity-sym-check:checked');
+        const selected = Array.from(checks).map(c => c.value);
+        if (selected.length === 0) {
+            if (typeof showToast === 'function') showToast('請至少選擇一個商品', 'error');
+            return;
+        }
+        this._saveActiveSymbols(selected);
+        this.renderMarket();
+    },
+
     DEFAULT_SYMBOLS: [
-        { symbol: 'GC=F',  name: t('commodity.gold'),   unit: 'USD/oz'  },
-        { symbol: 'CL=F',  name: t('commodity.wtiCrude'), unit: 'USD/bbl' },
-        { symbol: 'SI=F',  name: t('commodity.silver'),   unit: 'USD/oz'  },
+        { symbol: 'GC=F',  name: t('commodity.gold'),     unit: 'USD/oz'    },
+        { symbol: 'CL=F',  name: t('commodity.wtiCrude'), unit: 'USD/bbl'   },
+        { symbol: 'SI=F',  name: t('commodity.silver'),   unit: 'USD/oz'    },
         { symbol: 'NG=F',  name: t('commodity.naturalGas'), unit: 'USD/MMBtu'},
-        { symbol: 'HG=F',  name: t('commodity.copper'),   unit: 'USD/lb'  },
-        { symbol: 'BZ=F',  name: t('commodity.brentCrude'), unit: 'USD/bbl'},
+        { symbol: 'HG=F',  name: t('commodity.copper'),   unit: 'USD/lb'    },
+        { symbol: 'BZ=F',  name: t('commodity.brentCrude'), unit: 'USD/bbl' },
     ],
 
     // ── Init ──────────────────────────────────────────────────
@@ -74,7 +161,9 @@ const CommodityTab = {
         AppUtils.refreshIcons();
 
         try {
-            const data = await AppAPI.get('/api/commodity/market');
+            const active = this.getActiveSymbols();
+            const url = active.length ? `/api/commodity/market?symbols=${active.join(',')}` : '/api/commodity/market';
+            const data = await AppAPI.get(url);
 
             listEl.innerHTML = '';
             (data.commodities || []).forEach(item => {

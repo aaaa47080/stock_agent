@@ -426,6 +426,10 @@
                             <h2 class="font-serif text-3xl text-secondary" data-i18n="nav.commodity">大宗商品</h2>
                             <div class="flex items-center gap-2">
                                 <span id="commodity-last-updated" class="text-xs text-textMuted"></span>
+                                <button onclick="CommodityTab.showPicker()" title="自選標的"
+                                    class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition">
+                                    <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+                                </button>
                                 <button onclick="CommodityTab.renderMarket()"
                                     class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition">
                                     <i data-lucide="refresh-cw" class="w-4 h-4"></i>
@@ -467,6 +471,10 @@
                             <h2 class="font-serif text-3xl text-secondary" data-i18n="nav.forex">外匯市場</h2>
                             <div class="flex items-center gap-2">
                                 <span id="forex-last-updated" class="text-xs text-textMuted"></span>
+                                <button onclick="ForexTab.showPicker()" title="自選貨幣對"
+                                    class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition">
+                                    <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+                                </button>
                                 <button onclick="ForexTab.renderMarket()"
                                     class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition">
                                     <i data-lucide="refresh-cw" class="w-4 h-4"></i>

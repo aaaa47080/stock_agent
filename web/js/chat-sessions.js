@@ -364,6 +364,7 @@ async function createNewChat() {
         // 切換到"新對話"狀態，不立即建立 session
         window.currentSessionId = null;
         AppStore.set('currentSessionId', null);
+        try { localStorage.removeItem('chat_last_session_id'); } catch (_) {}
 
         // 顯示歡迎畫面
         showWelcomeScreen();
@@ -464,6 +465,8 @@ async function switchSession(sessionId) {
 
     window.currentSessionId = sessionId;
     AppStore.set('currentSessionId', sessionId);
+    // 永久記錄：跨 browser 重啟也能還原
+    try { localStorage.setItem('chat_last_session_id', sessionId); } catch (_) {}
 
     // 自動切換到 Chat 標籤頁（確保等待完成再載入歷史）
     if (typeof switchTab === 'function') {

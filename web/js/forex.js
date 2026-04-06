@@ -11,6 +11,90 @@ const ForexTab = {
     currentInterval: '1d',
     lastUpdatedAt: null,
 
+    // ── 可選貨幣對完整清單（分組）──────────────────────────────
+    AVAILABLE_PAIRS: [
+        { symbol: 'TWD=X',    name: 'USD/TWD', group: '亞太' },
+        { symbol: 'JPY=X',    name: 'USD/JPY', group: '亞太' },
+        { symbol: 'CNY=X',    name: 'USD/CNY', group: '亞太' },
+        { symbol: 'HKD=X',    name: 'USD/HKD', group: '亞太' },
+        { symbol: 'AUDUSD=X', name: 'AUD/USD', group: '亞太' },
+        { symbol: 'NZDUSD=X', name: 'NZD/USD', group: '亞太' },
+        { symbol: 'KRW=X',    name: 'USD/KRW', group: '亞太' },
+        { symbol: 'EURUSD=X', name: 'EUR/USD', group: '歐美' },
+        { symbol: 'GBPUSD=X', name: 'GBP/USD', group: '歐美' },
+        { symbol: 'USDCHF=X', name: 'USD/CHF', group: '歐美' },
+        { symbol: 'USDCAD=X', name: 'USD/CAD', group: '歐美' },
+        { symbol: 'EURGBP=X', name: 'EUR/GBP', group: '歐美' },
+        { symbol: 'EURJPY=X', name: 'EUR/JPY', group: '交叉盤' },
+        { symbol: 'GBPJPY=X', name: 'GBP/JPY', group: '交叉盤' },
+        { symbol: 'AUDJPY=X', name: 'AUD/JPY', group: '交叉盤' },
+    ],
+    STORAGE_KEY: 'forex_selected_pairs',
+    DEFAULT_SELECTED: ['TWD=X', 'EURUSD=X', 'GBPUSD=X', 'JPY=X', 'AUDUSD=X', 'CNY=X'],
+
+    getActivePairs() {
+        try {
+            const saved = localStorage.getItem(this.STORAGE_KEY);
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+            }
+        } catch (_) {}
+        return [...this.DEFAULT_SELECTED];
+    },
+
+    _saveActivePairs(pairs) {
+        localStorage.setItem(this.STORAGE_KEY, JSON.stringify(pairs));
+    },
+
+    showPicker() {
+        const listEl = document.getElementById('forex-list');
+        if (!listEl) return;
+        const selected = new Set(this.getActivePairs());
+        const groups = {};
+        this.AVAILABLE_PAIRS.forEach(p => {
+            if (!groups[p.group]) groups[p.group] = [];
+            groups[p.group].push(p);
+        });
+        listEl.innerHTML = `
+            <div>
+                <p class="text-xs text-textMuted mb-4">勾選要顯示的貨幣對（至少 1 個）</p>
+                ${Object.entries(groups).map(([group, pairs]) => `
+                    <div class="mb-5">
+                        <div class="text-[10px] uppercase tracking-wider text-textMuted/50 mb-2 pl-1">${group}</div>
+                        <div class="space-y-2">
+                            ${pairs.map(p => `
+                                <label class="flex items-center justify-between bg-surface border ${selected.has(p.symbol) ? 'border-primary/40 bg-primary/5' : 'border-white/5'} rounded-xl px-4 py-3 cursor-pointer hover:border-primary/30 transition">
+                                    <span class="text-sm font-bold text-secondary font-mono">${escapeHtml(p.name)}</span>
+                                    <input type="checkbox" value="${p.symbol}" ${selected.has(p.symbol) ? 'checked' : ''}
+                                        class="forex-pair-check w-4 h-4 accent-primary">
+                                </label>`).join('')}
+                        </div>
+                    </div>`).join('')}
+                <div class="flex gap-2 mt-2 pb-4">
+                    <button onclick="ForexTab.renderMarket()"
+                        class="flex-1 py-3 bg-surface border border-white/10 text-textMuted font-bold rounded-xl hover:bg-surfaceHighlight transition text-sm">
+                        取消
+                    </button>
+                    <button onclick="ForexTab._applyPicker()"
+                        class="flex-1 py-3 bg-primary text-background font-bold rounded-xl hover:opacity-90 transition text-sm">
+                        確認套用
+                    </button>
+                </div>
+            </div>`;
+    },
+
+    _applyPicker() {
+        const checks = document.querySelectorAll('.forex-pair-check:checked');
+        const selected = Array.from(checks).map(c => c.value);
+        if (selected.length === 0) {
+            if (typeof showToast === 'function') showToast('請至少選擇一個貨幣對', 'error');
+            return;
+        }
+        this._saveActivePairs(selected);
+        this.renderMarket();
+    },
+
     DEFAULT_PAIRS: [
         { symbol: 'TWD=X',    name: 'USD/TWD', desc: t('forex.usdTwd') },
         { symbol: 'EURUSD=X', name: 'EUR/USD', desc: t('forex.eurUsd') },
@@ -74,7 +158,9 @@ const ForexTab = {
         AppUtils.refreshIcons();
 
         try {
-            const data = await AppAPI.get('/api/forex/market');
+            const active = this.getActivePairs();
+            const url = active.length ? `/api/forex/market?pairs=${active.join(',')}` : '/api/forex/market';
+            const data = await AppAPI.get(url);
 
             listEl.innerHTML = '';
             (data.pairs || []).forEach(item => {
