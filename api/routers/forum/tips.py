@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from api.deps import get_current_user
 from api.middleware.rate_limit import limiter
 from api.pi_verification import PI_API_BASE, PI_API_KEY
-from api.utils import logger
+from api.utils import logger, run_sync
 from core.orm.forum_repo import forum_repo
 
 from .models import CreateTipRequest
@@ -18,6 +18,25 @@ from .models import CreateTipRequest
 router = APIRouter(prefix="/api/forum", tags=["Forum - Tips"])
 
 TEST_MODE = os.getenv("TEST_MODE", "").lower() in ("true", "1", "yes")
+
+
+def _record_tip_payment(payment_id: str, user_id: str) -> None:
+    """Record a tip payment as used to prevent replay attacks."""
+    from core.database.connection import get_connection
+
+    conn = get_connection()
+    try:
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO used_payments (payment_id, user_id) VALUES (%s, %s) ON CONFLICT DO NOTHING",
+            (payment_id, user_id),
+        )
+        conn.commit()
+        if cursor.rowcount == 0:
+            raise ValueError("payment already used")
+    finally:
+        cursor.close()
+        conn.close()
 
 
 async def _verify_tip_payment(payment_id: str) -> dict:
@@ -91,6 +110,13 @@ async def tip_post(
                 )
 
             payment_data = await _verify_tip_payment(body.payment_id)
+
+            try:
+                await run_sync(lambda: _record_tip_payment(body.payment_id, user_id))
+            except ValueError:
+                raise HTTPException(status_code=409, detail="Payment has already been used")
+            except Exception:
+                logger.warning("Failed to record tip payment usage: %s", body.payment_id)
 
             blockchain_txid = payment_data.get("transaction", {}).get("_id")
             if blockchain_txid:

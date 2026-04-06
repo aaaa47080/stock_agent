@@ -416,7 +416,7 @@ const ForumApp = {
                 const booCount = Math.max(0, post.boo_count || 0);
                 const safeUsername = typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.username || post.user_id) : post.username || post.user_id;
                 const safeTitle = typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(post.title || '') : post.title || '';
-                const categoryShort = (post.category || '').toLowerCase();
+                const categoryShort = typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML((post.category || '').toLowerCase()) : (post.category || '').toLowerCase();
 
                 const pinnedHtml = isPinned ? `
                     <div class="flex items-center gap-1.5 mb-2 text-warning/70 text-[10px] font-bold uppercase tracking-wider">
@@ -434,7 +434,7 @@ const ForumApp = {
                     ${pinnedHtml}
                     <div class="flex items-center gap-2 mb-2.5">
                         <span class="text-[10px] font-bold uppercase tracking-[0.15em] px-2.5 py-1 rounded-full ${colors.badge}">${categoryShort || 'general'}</span>
-                        <a href="/static/forum/profile.html?id=${post.user_id}" class="text-xs text-textMuted/70 hover:text-primary transition truncate" onclick="event.stopPropagation()">${safeUsername}</a>
+                        <a href="/static/forum/profile.html?id=${encodeURIComponent(post.user_id)}" class="text-xs text-textMuted/70 hover:text-primary transition truncate" onclick="event.stopPropagation()">${safeUsername}</a>
                         <span class="text-[10px] text-textMuted/40 ml-auto shrink-0">${date}</span>
                     </div>
                     <h3 class="font-bold text-secondary text-[15px] leading-snug mb-2.5 group-hover:text-primary transition-colors line-clamp-2">${safeTitle}</h3>
@@ -741,7 +741,7 @@ const ForumApp = {
                     'rounded-[24px] border border-white/8 bg-background/40 px-5 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]';
                 el.innerHTML = `
                     <div class="mb-3 flex items-start justify-between gap-4">
-                        <a href="/static/forum/profile.html?id=${comment.user_id}" class="font-bold text-sm text-secondary hover:text-primary transition">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(comment.username || comment.user_id) : comment.username || comment.user_id}</a>
+                        <a href="/static/forum/profile.html?id=${encodeURIComponent(comment.user_id)}" class="font-bold text-sm text-secondary hover:text-primary transition">${typeof SecurityUtils !== 'undefined' ? SecurityUtils.escapeHTML(comment.username || comment.user_id) : comment.username || comment.user_id}</a>
                         <div class="flex items-center gap-3">
                             <span class="text-xs text-textMuted/70">${formatTWDate(comment.created_at, true)}</span>
                             <button data-report-type="comment" data-report-id="${comment.id}" class="rounded-full border border-white/8 bg-background/50 p-2 text-textMuted transition hover:text-danger hover:border-danger/25 hover:bg-danger/10 report-trigger" title="Report">

@@ -364,25 +364,28 @@ class ClientLogRequest(BaseModel):
     data: Optional[dict] = Field(default=None, description="Additional data")
 
 
+_VALID_CLIENT_LOG_LEVELS = frozenset({"debug", "info", "warning", "error", "critical"})
+
+
 @router.post("/api/client/log")
 async def client_log(
     body: ClientLogRequest, current_user: dict = Depends(get_current_user)
 ):
     """接收前端 client-side logs 並寫入 server logs"""
     user_id = current_user.get("user_id", "unknown")
-    log_msg = f"[CLIENT:{body.source}] [{body.level.upper()}] {body.message}"
+    safe_level = body.level.lower() if body.level.lower() in _VALID_CLIENT_LOG_LEVELS else "info"
+    safe_source = body.source.replace("\n", " ").replace("\r", " ")
+    safe_message = body.message.replace("\n", " ").replace("\r", " ")
+    log_msg = f"[CLIENT:{safe_source}] [{safe_level.upper()}] {safe_message}"
 
     if body.data:
-        log_msg += f" | data: {body.data}"
+        safe_data = str(body.data).replace("\n", " ").replace("\r", " ")
+        log_msg += f" | data: {safe_data}"
 
     log_msg += f" | user: {user_id}"
 
-    if body.level == "error":
-        logger.error(log_msg)
-    elif body.level == "warning":
-        logger.warning(log_msg)
-    else:
-        logger.info(log_msg)
+    log_func = getattr(logger, safe_level)
+    log_func(log_msg)
 
     return {"status": "ok"}
 

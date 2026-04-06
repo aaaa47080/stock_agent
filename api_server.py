@@ -151,6 +151,9 @@ if not _frontend_logger.handlers:
     _frontend_logger.addHandler(_rotating_handler)
 
 
+_VALID_LOG_LEVELS = frozenset({"debug", "info", "warning", "error", "critical"})
+
+
 class FrontendLog(BaseModel):
     level: str = "info"
     message: str = Field(max_length=2000)
@@ -162,10 +165,13 @@ async def receive_frontend_log(
     log: FrontendLog, current_user: dict = Depends(get_current_user)
 ):
     """接收前端 debug log 並寫入檔案 (需登入)"""
-    log_func = getattr(_frontend_logger, log.level.lower(), _frontend_logger.info)
-    log_line = log.message
+    safe_level = log.level.lower() if log.level.lower() in _VALID_LOG_LEVELS else "info"
+    log_func = getattr(_frontend_logger, safe_level)
+    safe_message = log.message.replace("\n", " ").replace("\r", " ")
+    log_line = safe_message
     if log.data:
-        log_line += f" | Data: {log.data}"
+        safe_data = str(log.data).replace("\n", " ").replace("\r", " ")
+        log_line += f" | Data: {safe_data}"
     log_func(log_line)
     return {"status": "logged"}
 

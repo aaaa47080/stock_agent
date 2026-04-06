@@ -38,7 +38,7 @@ const FriendsAPI = {
      * @param {string} targetUserId - 目標用戶 ID
      */
     async getProfile(targetUserId) {
-        return await AppAPI.get(`/api/friends/profile/${targetUserId}`);
+        return await AppAPI.get(`/api/friends/profile/${encodeURIComponent(targetUserId)}`);
     },
 
     /**
@@ -93,7 +93,7 @@ const FriendsAPI = {
         const userId = this._getUserId();
         if (!userId) throw new Error(t('friends.loginRequired'));
 
-        return await AppAPI.delete(`/api/friends/remove?target_user_id=${friendId}`);
+        return await AppAPI.delete(`/api/friends/remove?target_user_id=${encodeURIComponent(friendId)}`);
     },
 
     /**
@@ -136,7 +136,7 @@ const FriendsAPI = {
         const userId = this._getUserId();
         if (!userId) return { status: null, is_friend: false };
 
-        return await AppAPI.get(`/api/friends/status/${targetUserId}`);
+        return await AppAPI.get(`/api/friends/status/${encodeURIComponent(targetUserId)}`);
     },
 
     /**
@@ -307,7 +307,7 @@ const FriendsUI = {
 
         return `
             <div class="user-card bg-surface border border-white/5 rounded-xl p-4 flex items-center justify-between hover:border-white/10 transition">
-                <a href="/static/forum/profile.html?id=${user.user_id}" onclick="sessionStorage.setItem('returnToTab', 'friends')" class="flex items-center gap-3 flex-1 min-w-0">
+                <a href="/static/forum/profile.html?id=${encodeURIComponent(user.user_id)}" onclick="sessionStorage.setItem('returnToTab', 'friends')" class="flex items-center gap-3 flex-1 min-w-0">
                     <div class="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold flex-shrink-0">
                         ${initial}
                     </div>

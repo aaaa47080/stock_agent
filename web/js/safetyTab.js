@@ -745,7 +745,7 @@ const SafetyTab = {
 
     _typeBadge(type) {
         const t = this.scamTypes.find((s) => s.id === type);
-        const name = t ? `${t.icon} ${t.name}` : type;
+        const name = t ? `${t.icon} ${t.name}` : this._escapeHTML(type);
         return `<span class="bg-primary/10 text-primary px-2 py-0.5 rounded text-[10px] font-bold">${name}</span>`;
     },
 

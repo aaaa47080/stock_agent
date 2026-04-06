@@ -201,10 +201,10 @@ async def upgrade_to_premium(
 
         try:
             await run_sync(lambda: _record_used_payment(body.payment_id, user_id))
+        except ValueError:
+            raise HTTPException(status_code=409, detail="Payment has already been used")
         except Exception:
-            logger.warning(
-                "Payment already used or failed to record: %s", body.payment_id
-            )
+            logger.warning("Failed to record payment usage: %s", body.payment_id)
 
         blockchain_txid = payment_data.get("transaction", {}).get("_id")
         if blockchain_txid:

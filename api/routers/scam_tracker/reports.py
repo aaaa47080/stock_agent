@@ -7,7 +7,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
-from api.deps import get_current_user
+from api.deps import get_current_user, get_optional_current_user
 from api.middleware.rate_limit import limiter
 from core.orm.config_repo import config_repo
 from core.orm.repositories import user_repo
@@ -102,7 +102,7 @@ async def get_scam_tracker_config():
 
 @router.get("/{report_id}", response_model=dict)
 async def get_scam_report_detail(
-    report_id: int, current_user: Optional[dict] = Depends(get_current_user)
+    report_id: int, current_user: Optional[dict] = Depends(get_optional_current_user)
 ):
     """
     獲取舉報詳情

@@ -1,8 +1,10 @@
 import hashlib
+import json
 import logging
 import os
 import threading
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Optional, TypedDict
 
 import jwt
@@ -59,9 +61,43 @@ if len(SECRET_KEY) < 32:
     )
 
 
-# === Refresh Token Blacklist (in-memory) ===
-_revoked_tokens: dict[str, datetime] = {}  # token_hash -> expiry
+# === Refresh Token Blacklist (in-memory + file-persisted) ===
+# In-memory for fast lookup; file-backed so revocations survive restarts.
+# Note: multi-process deployments (WEB_CONCURRENCY > 1) should use Redis
+# instead — set REDIS_URL and the rate limiter already uses it.
+_REVOKED_TOKENS_FILE = Path("data/revoked_tokens.json")
+_revoked_tokens: dict[str, str] = {}  # token_hash -> ISO expiry string
 _revoked_tokens_lock = threading.Lock()
+
+
+def _load_revoked_tokens() -> None:
+    """Load persisted revoked tokens from disk into memory on startup."""
+    try:
+        if _REVOKED_TOKENS_FILE.exists():
+            with open(_REVOKED_TOKENS_FILE, "r", encoding="utf-8") as f:
+                raw: dict = json.load(f)
+            now = datetime.now(timezone.utc)
+            # Only load non-expired entries
+            _revoked_tokens.update(
+                {h: exp for h, exp in raw.items()
+                 if datetime.fromisoformat(exp) > now}
+            )
+    except Exception as exc:
+        logger.warning("Failed to load revoked tokens from disk: %s", exc)
+
+
+def _save_revoked_tokens() -> None:
+    """Persist current revoked tokens to disk (must be called under lock)."""
+    try:
+        _REVOKED_TOKENS_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with open(_REVOKED_TOKENS_FILE, "w", encoding="utf-8") as f:
+            json.dump(_revoked_tokens, f)
+    except Exception as exc:
+        logger.warning("Failed to persist revoked tokens to disk: %s", exc)
+
+
+# Load existing revocations at import time
+_load_revoked_tokens()
 
 
 def _hash_token(token: str) -> str:
@@ -72,10 +108,10 @@ def _hash_token(token: str) -> str:
 def revoke_token(token: str, expires_at: Optional[datetime] = None) -> None:
     """Revoke a refresh token by adding its hash to the blacklist."""
     token_hash = _hash_token(token)
+    expiry = expires_at or (datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
     with _revoked_tokens_lock:
-        _revoked_tokens[token_hash] = expires_at or (
-            datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
-        )
+        _revoked_tokens[token_hash] = expiry.isoformat()
+        _save_revoked_tokens()
     logger.info(f"Token revoked: {token_hash[:16]}...")
 
 
@@ -84,9 +120,10 @@ def is_token_revoked(token: str) -> bool:
     token_hash = _hash_token(token)
     with _revoked_tokens_lock:
         if token_hash in _revoked_tokens:
-            expiry = _revoked_tokens[token_hash]
-            if expiry and expiry < datetime.now(timezone.utc):
+            expiry = datetime.fromisoformat(_revoked_tokens[token_hash])
+            if expiry < datetime.now(timezone.utc):
                 del _revoked_tokens[token_hash]
+                _save_revoked_tokens()
                 return False
             return True
     return False
@@ -97,10 +134,15 @@ def cleanup_expired_revoked_tokens() -> int:
     removed = 0
     now = datetime.now(timezone.utc)
     with _revoked_tokens_lock:
-        expired = [h for h, exp in _revoked_tokens.items() if exp and exp < now]
+        expired = [
+            h for h, exp in _revoked_tokens.items()
+            if datetime.fromisoformat(exp) < now
+        ]
         for h in expired:
             del _revoked_tokens[h]
             removed += 1
+        if removed:
+            _save_revoked_tokens()
     if removed:
         logger.info(f"Cleaned up {removed} expired revoked tokens")
     return removed
