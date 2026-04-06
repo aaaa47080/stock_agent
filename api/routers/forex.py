@@ -5,9 +5,11 @@ Follows the same pattern as api/routers/usstock.py
 """
 
 import asyncio
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+import httpx
 import yfinance as yf
 from fastapi import APIRouter, Depends, Header, HTTPException
 
@@ -18,6 +20,11 @@ from api.utils import logger
 router = APIRouter(prefix="/api/forex", tags=["Forex"])
 
 MARKET_DATA_UNAVAILABLE_MESSAGE = "目前無法取得外匯行情，已回傳空資料供前端安全降級"
+
+# ── Optional ExchangeRate-API key (free 1500 req/month: https://exchangerate-api.com) ──
+# Set EXCHANGE_RATE_API_KEY in .env for legal commercial use.
+# Falls back to yfinance when key is absent or a pair isn't covered.
+EXCHANGE_RATE_API_KEY = os.getenv("EXCHANGE_RATE_API_KEY", "")
 
 # ── Cache ──────────────────────────────────────────────────────────────────────
 _cache: dict = {}
@@ -73,6 +80,52 @@ def _normalize_forex_symbol(pair: str) -> str:
     if s in DIRECT_MAP:
         return DIRECT_MAP[s]
     return s + "=X"
+
+
+async def _fetch_rates_exchangerate_api(base: str) -> dict:
+    """Fetch all rates for a base currency from ExchangeRate-API.
+    Returns {QUOTE: rate} dict, or {} on failure. Cached 4 hours per base."""
+    cache_key = f"era:{base}"
+    cached = _get_cache(cache_key)
+    if cached is not None:
+        return cached
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            resp = await client.get(
+                f"https://v6.exchangerate-api.com/v6/{EXCHANGE_RATE_API_KEY}/latest/{base}"
+            )
+            resp.raise_for_status()
+            data = resp.json()
+            rates = data.get("conversion_rates", {})
+            _set_cache(cache_key, rates, ttl=14400)  # 4 hours
+            return rates
+    except Exception as e:
+        logger.warning(f"[forex] ExchangeRate-API failed for {base}: {e}")
+        _set_cache(cache_key, {}, ttl=300)  # negative cache 5 min on error
+        return {}
+
+
+async def _fetch_quotes_exchangerate_api(targets: list[dict]) -> list[dict]:
+    """Fetch forex rates via ExchangeRate-API. Returns only successful results."""
+    # Deduplicate base currencies needed
+    bases = list({t["base"] for t in targets if t["base"] != "?"})
+    rate_maps = dict(zip(bases, await asyncio.gather(*[_fetch_rates_exchangerate_api(b) for b in bases])))
+
+    results = []
+    for t in targets:
+        base, quote = t["base"], t["quote"]
+        if base == "?" or quote == "?":
+            continue
+        rate = rate_maps.get(base, {}).get(quote)
+        if rate is None:
+            continue
+        rate = round(float(rate), 6)
+        results.append({
+            "symbol": t["symbol"], "name": t["name"],
+            "rate": rate, "change": 0.0, "changePercent": 0.0,
+            "base": base, "quote": quote,
+        })
+    return results
 
 
 def _fetch_forex_sync(symbol: str, name: str, base: str, quote: str) -> dict | None:
@@ -147,15 +200,24 @@ async def get_forex_market(pairs: Optional[str] = None):
     if cached:
         return cached
 
-    results = await asyncio.gather(
-        *[
-            asyncio.to_thread(
-                _fetch_forex_sync, t["symbol"], t["name"], t["base"], t["quote"]
-            )
+    if EXCHANGE_RATE_API_KEY:
+        fx_pairs = await _fetch_quotes_exchangerate_api(targets)
+        # Fallback to yfinance for any pair ExchangeRate-API couldn't supply
+        fetched_syms = {p["symbol"] for p in fx_pairs}
+        missing = [t for t in targets if t["symbol"] not in fetched_syms]
+        if missing:
+            fallback = await asyncio.gather(*[
+                asyncio.to_thread(_fetch_forex_sync, t["symbol"], t["name"], t["base"], t["quote"])
+                for t in missing
+            ])
+            fx_pairs += [r for r in fallback if r]
+    else:
+        results = await asyncio.gather(*[
+            asyncio.to_thread(_fetch_forex_sync, t["symbol"], t["name"], t["base"], t["quote"])
             for t in targets
-        ]
-    )
-    fx_pairs = [r for r in results if r]
+        ])
+        fx_pairs = [r for r in results if r]
+
     data = {"pairs": fx_pairs, "last_updated": datetime.now(timezone.utc).isoformat()}
     if len(fx_pairs) != len(targets):
         data["partial_failure"] = True

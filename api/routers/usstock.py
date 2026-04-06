@@ -1,7 +1,9 @@
 import asyncio
+import os
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+import httpx
 import yfinance as yf
 from fastapi import APIRouter, Depends, Header, HTTPException
 
@@ -11,6 +13,11 @@ from api.utils import logger
 from core.tools.us_data_provider import get_us_data_provider
 
 router = APIRouter(prefix="/api/usstock", tags=["US Stock"])
+
+# ── Optional Finnhub API key (free commercial use: https://finnhub.io) ─────────
+# Set FINNHUB_API_KEY in .env to use Finnhub as primary quote source (legal).
+# Falls back to yfinance if key is absent.
+FINNHUB_API_KEY = os.getenv("FINNHUB_API_KEY", "")
 
 # ── Cache ──────────────────────────────────────────────────────────────────────
 _cache: dict = {}
@@ -30,16 +37,8 @@ def _set_cache(key: str, data, ttl: int = 300):
 
 # ── Constants ──────────────────────────────────────────────────────────────────
 DEFAULT_US_SYMBOLS = [
-    "AAPL",
-    "MSFT",
-    "GOOGL",
-    "AMZN",
-    "TSLA",
-    "META",
-    "NVDA",
-    "NFLX",
-    "AMD",
-    "INTC",
+    "AAPL", "MSFT", "GOOGL", "AMZN", "TSLA",
+    "META", "NVDA", "NFLX", "AMD", "INTC",
 ]
 INDEX_SYMBOLS = [
     {"symbol": "^DJI", "name": "道瓊工業指數"},
@@ -47,10 +46,34 @@ INDEX_SYMBOLS = [
     {"symbol": "^IXIC", "name": "那斯達克"},
 ]
 
+# Static name table for curated symbols (avoids slow yfinance .info calls)
+_US_STOCK_NAMES: dict[str, str] = {
+    # 科技
+    "AAPL": "Apple", "MSFT": "Microsoft", "GOOGL": "Alphabet",
+    "AMZN": "Amazon", "META": "Meta", "NVDA": "NVIDIA",
+    "TSLA": "Tesla", "NFLX": "Netflix", "AMD": "AMD",
+    "INTC": "Intel", "QCOM": "Qualcomm", "AVGO": "Broadcom",
+    "TSM": "TSMC ADR", "ORCL": "Oracle", "CRM": "Salesforce",
+    # 金融
+    "JPM": "JPMorgan", "BAC": "Bank of America", "GS": "Goldman Sachs",
+    "WFC": "Wells Fargo", "V": "Visa", "MA": "Mastercard",
+    # 消費
+    "WMT": "Walmart", "COST": "Costco", "HD": "Home Depot",
+    "NKE": "Nike", "MCD": "McDonald's", "SBUX": "Starbucks",
+    # 醫療
+    "JNJ": "J&J", "UNH": "UnitedHealth", "PFE": "Pfizer",
+    "ABBV": "AbbVie", "MRK": "Merck",
+    # 能源
+    "XOM": "ExxonMobil", "CVX": "Chevron",
+    # ETF
+    "SPY": "S&P 500 ETF", "QQQ": "Nasdaq ETF",
+    "DIA": "Dow Jones ETF", "GLD": "Gold ETF", "IWM": "Russell 2000 ETF",
+}
+
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 def _fetch_quote_sync(symbol: str) -> dict | None:
-    """Fetch a single quote synchronously (run in thread)."""
+    """Fetch a single quote synchronously via yfinance (fallback)."""
     try:
         ticker = yf.Ticker(symbol)
         fi = ticker.fast_info
@@ -58,20 +81,48 @@ def _fetch_quote_sync(symbol: str) -> dict | None:
         prev = round(float(fi.previous_close), 2)
         chg = round(price - prev, 2)
         chg_p = round((chg / prev) * 100, 2) if prev else 0.0
-        try:
-            name = ticker.info.get("shortName") or symbol
-        except Exception:
-            name = symbol
-        return {
-            "symbol": symbol,
-            "name": name,
-            "price": price,
-            "change": chg,
-            "changePercent": chg_p,
-        }
+        name = _US_STOCK_NAMES.get(symbol) or symbol
+        return {"symbol": symbol, "name": name, "price": price, "change": chg, "changePercent": chg_p}
     except Exception as e:
-        logger.warning(f"[usstock] quote failed {symbol}: {e}")
+        logger.warning(f"[usstock] yfinance quote failed {symbol}: {e}")
         return None
+
+
+async def _fetch_quotes_finnhub(symbols: list[str]) -> list[dict]:
+    """Fetch quotes from Finnhub API (primary, legal, free 60 req/min).
+    Returns only successfully fetched results; caller falls back to yfinance."""
+    results = []
+    async with httpx.AsyncClient(timeout=10) as client:
+        tasks = [
+            client.get(
+                "https://finnhub.io/api/v1/quote",
+                params={"symbol": s, "token": FINNHUB_API_KEY},
+            )
+            for s in symbols
+        ]
+        responses = await asyncio.gather(*tasks, return_exceptions=True)
+    for sym, resp in zip(symbols, responses):
+        try:
+            if isinstance(resp, Exception):
+                raise resp
+            resp.raise_for_status()
+            d = resp.json()
+            price = round(float(d["c"]), 2)
+            prev = round(float(d["pc"]), 2)
+            if price == 0:
+                continue  # Finnhub returns 0 for unknown symbols
+            chg = round(price - prev, 2)
+            chg_p = round((chg / prev) * 100, 2) if prev else 0.0
+            results.append({
+                "symbol": sym,
+                "name": _US_STOCK_NAMES.get(sym, sym),
+                "price": price,
+                "change": chg,
+                "changePercent": chg_p,
+            })
+        except Exception as e:
+            logger.warning(f"[usstock] Finnhub quote failed {sym}: {e}")
+    return results
 
 
 # ── Endpoints ──────────────────────────────────────────────────────────────────
@@ -90,11 +141,18 @@ async def get_us_market(symbols: Optional[str] = None):
     if cached:
         return cached
 
-    results = await asyncio.gather(
-        *[asyncio.to_thread(_fetch_quote_sync, s) for s in target]
-    )
-    stocks = [r for r in results if r]
-    # Validate: if no results, return error-friendly empty
+    if FINNHUB_API_KEY:
+        stocks = await _fetch_quotes_finnhub(target)
+        # Fallback to yfinance for any symbols Finnhub couldn't return
+        fetched = {s["symbol"] for s in stocks}
+        missing = [s for s in target if s not in fetched]
+        if missing:
+            fallback = await asyncio.gather(*[asyncio.to_thread(_fetch_quote_sync, s) for s in missing])
+            stocks += [r for r in fallback if r]
+    else:
+        results = await asyncio.gather(*[asyncio.to_thread(_fetch_quote_sync, s) for s in target])
+        stocks = [r for r in results if r]
+
     if not stocks and target:
         raise HTTPException(status_code=404, detail="找不到股票代號或目前無法獲取數據")
     data = {"stocks": stocks, "last_updated": datetime.now(timezone.utc).isoformat()}

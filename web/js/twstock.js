@@ -9,17 +9,92 @@ window.TWStockTab = {
     activeSubTab: 'market', // 'market' | 'pulse'
     lastUpdatedAt: null,
     defaultSymbols: [
-        '2330',
-        '2317',
-        '2454',
-        '2308',
-        '2881',
-        '2412',
-        '2882',
-        '2891',
-        '1301',
-        '2002',
+        '2330', '2317', '2454', '2308',
+        '2881', '2412', '2882', '2891', '1301', '2002',
     ],
+
+    // ── 精選標的清單（分組，供 Picker 使用）───────────────────────
+    AVAILABLE_SYMBOLS: [
+        { symbol: '2330', name: '台積電',   group: '半導體' },
+        { symbol: '2454', name: '聯發科',   group: '半導體' },
+        { symbol: '2303', name: '聯電',     group: '半導體' },
+        { symbol: '2308', name: '台達電',   group: '半導體' },
+        { symbol: '2317', name: '鴻海',     group: '電子' },
+        { symbol: '2357', name: '華碩',     group: '電子' },
+        { symbol: '2382', name: '廣達',     group: '電子' },
+        { symbol: '3008', name: '大立光',   group: '電子' },
+        { symbol: '2881', name: '富邦金',   group: '金融' },
+        { symbol: '2882', name: '國泰金',   group: '金融' },
+        { symbol: '2883', name: '開發金',   group: '金融' },
+        { symbol: '2884', name: '玉山金',   group: '金融' },
+        { symbol: '2891', name: '中信金',   group: '金融' },
+        { symbol: '2412', name: '中華電',   group: '電信' },
+        { symbol: '3045', name: '台灣大',   group: '電信' },
+        { symbol: '1301', name: '台塑',     group: '傳產' },
+        { symbol: '1303', name: '南亞',     group: '傳產' },
+        { symbol: '2002', name: '中鋼',     group: '傳產' },
+        { symbol: '6505', name: '台塑化',   group: '傳產' },
+        { symbol: '2603', name: '長榮',     group: '航運' },
+        { symbol: '2609', name: '陽明',     group: '航運' },
+        { symbol: '2615', name: '萬海',     group: '航運' },
+        { symbol: '0050', name: '元大台50', group: 'ETF' },
+        { symbol: '0056', name: '元大高股息', group: 'ETF' },
+        { symbol: '006208', name: '富邦台50', group: 'ETF' },
+    ],
+
+    showPicker() {
+        const controlsContainer = document.getElementById('twstock-screener-controls');
+        if (!controlsContainer) return;
+        const selected = new Set(AppStore.get('twStockSelectedSymbols') || this.defaultSymbols);
+        const groups = {};
+        this.AVAILABLE_SYMBOLS.forEach(s => {
+            if (!groups[s.group]) groups[s.group] = [];
+            groups[s.group].push(s);
+        });
+        controlsContainer.innerHTML = `
+            <div>
+                <p class="text-xs text-textMuted mb-4">勾選要追蹤的台股（也可直接輸入代號加入）</p>
+                ${Object.entries(groups).map(([group, syms]) => `
+                    <div class="mb-4">
+                        <div class="text-[10px] uppercase tracking-wider text-textMuted/50 mb-2 pl-1">${group}</div>
+                        <div class="grid grid-cols-2 gap-1.5">
+                            ${syms.map(s => `
+                                <label class="flex items-center gap-2 bg-surface border ${selected.has(s.symbol) ? 'border-primary/40 bg-primary/5' : 'border-white/5'} rounded-xl px-3 py-2 cursor-pointer hover:border-primary/30 transition">
+                                    <input type="checkbox" value="${s.symbol}" ${selected.has(s.symbol) ? 'checked' : ''}
+                                        class="twstock-sym-check w-3.5 h-3.5 accent-primary">
+                                    <div>
+                                        <span class="text-xs font-bold text-secondary">${s.symbol}</span>
+                                        <span class="text-[10px] text-textMuted ml-1">${escapeHtml(s.name)}</span>
+                                    </div>
+                                </label>`).join('')}
+                        </div>
+                    </div>`).join('')}
+                <div class="flex gap-2 mt-2 pb-4">
+                    <button onclick="window.TWStockTab.renderWatchlistControls(); window.TWStockTab.refreshMarketWatch()"
+                        class="flex-1 py-2.5 bg-surface border border-white/10 text-textMuted font-bold rounded-xl hover:bg-surfaceHighlight transition text-sm">
+                        取消
+                    </button>
+                    <button onclick="window.TWStockTab._applyPicker()"
+                        class="flex-1 py-2.5 bg-primary text-background font-bold rounded-xl hover:opacity-90 transition text-sm">
+                        確認套用
+                    </button>
+                </div>
+            </div>`;
+    },
+
+    _applyPicker() {
+        const checks = document.querySelectorAll('.twstock-sym-check:checked');
+        const selected = Array.from(checks).map(c => c.value);
+        if (selected.length === 0) {
+            if (typeof showToast === 'function') showToast('請至少選擇一支股票', 'error');
+            return;
+        }
+        AppStore.set('twStockSelectedSymbols', selected);
+        window.twStockSelectedSymbols = selected;
+        this.saveTwStockSelection();
+        this.renderWatchlistControls();
+        this.refreshMarketWatch();
+    },
 
     initTwStock: function () {
         if (window.MarketStatus && !this._autoRefreshBound) {
@@ -143,6 +218,10 @@ window.TWStockTab = {
                 <h3 class="font-bold text-secondary flex items-center gap-2 flex-shrink-0">
                     <i data-lucide="star" class="w-4 h-4 text-yellow-500"></i> My TW Stocks
                 </h3>
+                <button onclick="window.TWStockTab.showPicker()"
+                    class="p-1.5 text-textMuted hover:text-primary hover:bg-white/5 rounded-lg transition" title="選擇標的">
+                    <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+                </button>
                 <div class="flex-1 min-w-0">
                     <div class="relative">
                         <input type="text" id="twStockAddInput" placeholder="${_t('twstock.searchPlaceholder')}" maxlength="6"

@@ -7,17 +7,97 @@ window.USStockTab = {
     activeSubTab: 'market',
     lastUpdatedAt: null,
     defaultSymbols: [
-        'AAPL',
-        'MSFT',
-        'GOOGL',
-        'AMZN',
-        'TSLA',
-        'META',
-        'NVDA',
-        'NFLX',
-        'AMD',
-        'INTC',
+        'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA',
+        'META', 'NVDA', 'NFLX', 'AMD', 'INTC',
     ],
+
+    // ── 精選標的清單（分組，供 Picker 使用）───────────────────────
+    AVAILABLE_SYMBOLS: [
+        { symbol: 'AAPL',  name: 'Apple',       group: '科技' },
+        { symbol: 'MSFT',  name: 'Microsoft',   group: '科技' },
+        { symbol: 'GOOGL', name: 'Alphabet',    group: '科技' },
+        { symbol: 'AMZN',  name: 'Amazon',      group: '科技' },
+        { symbol: 'META',  name: 'Meta',        group: '科技' },
+        { symbol: 'NVDA',  name: 'NVIDIA',      group: '科技' },
+        { symbol: 'TSLA',  name: 'Tesla',       group: '科技' },
+        { symbol: 'NFLX',  name: 'Netflix',     group: '科技' },
+        { symbol: 'AMD',   name: 'AMD',         group: '科技' },
+        { symbol: 'INTC',  name: 'Intel',       group: '科技' },
+        { symbol: 'QCOM',  name: 'Qualcomm',    group: '科技' },
+        { symbol: 'AVGO',  name: 'Broadcom',    group: '科技' },
+        { symbol: 'TSM',   name: 'TSMC ADR',    group: '科技' },
+        { symbol: 'ORCL',  name: 'Oracle',      group: '科技' },
+        { symbol: 'JPM',   name: 'JPMorgan',    group: '金融' },
+        { symbol: 'BAC',   name: 'Bank of America', group: '金融' },
+        { symbol: 'GS',    name: 'Goldman Sachs', group: '金融' },
+        { symbol: 'V',     name: 'Visa',        group: '金融' },
+        { symbol: 'MA',    name: 'Mastercard',  group: '金融' },
+        { symbol: 'WMT',   name: 'Walmart',     group: '消費' },
+        { symbol: 'COST',  name: 'Costco',      group: '消費' },
+        { symbol: 'MCD',   name: "McDonald's",  group: '消費' },
+        { symbol: 'JNJ',   name: 'J&J',         group: '醫療' },
+        { symbol: 'UNH',   name: 'UnitedHealth', group: '醫療' },
+        { symbol: 'PFE',   name: 'Pfizer',      group: '醫療' },
+        { symbol: 'XOM',   name: 'ExxonMobil',  group: '能源' },
+        { symbol: 'CVX',   name: 'Chevron',     group: '能源' },
+        { symbol: 'SPY',   name: 'S&P 500 ETF', group: 'ETF' },
+        { symbol: 'QQQ',   name: 'Nasdaq ETF',  group: 'ETF' },
+        { symbol: 'GLD',   name: 'Gold ETF',    group: 'ETF' },
+    ],
+
+    showPicker() {
+        const container = document.getElementById('usstock-screener-controls');
+        if (!container) return;
+        const selected = new Set(AppStore.get('usStockSelectedSymbols') || this.defaultSymbols);
+        const groups = {};
+        this.AVAILABLE_SYMBOLS.forEach(s => {
+            if (!groups[s.group]) groups[s.group] = [];
+            groups[s.group].push(s);
+        });
+        container.innerHTML = `
+            <div>
+                <p class="text-xs text-textMuted mb-4">勾選要追蹤的美股（也可直接輸入代號加入）</p>
+                ${Object.entries(groups).map(([group, syms]) => `
+                    <div class="mb-4">
+                        <div class="text-[10px] uppercase tracking-wider text-textMuted/50 mb-2 pl-1">${group}</div>
+                        <div class="grid grid-cols-2 gap-1.5">
+                            ${syms.map(s => `
+                                <label class="flex items-center gap-2 bg-surface border ${selected.has(s.symbol) ? 'border-primary/40 bg-primary/5' : 'border-white/5'} rounded-xl px-3 py-2 cursor-pointer hover:border-primary/30 transition">
+                                    <input type="checkbox" value="${s.symbol}" ${selected.has(s.symbol) ? 'checked' : ''}
+                                        class="usstock-sym-check w-3.5 h-3.5 accent-primary">
+                                    <div>
+                                        <span class="text-xs font-bold text-secondary">${s.symbol}</span>
+                                        <span class="text-[10px] text-textMuted ml-1">${escapeHtml(s.name)}</span>
+                                    </div>
+                                </label>`).join('')}
+                        </div>
+                    </div>`).join('')}
+                <div class="flex gap-2 mt-2 pb-4">
+                    <button onclick="window.USStockTab.renderWatchlistControls(); window.USStockTab.refreshMarketWatch()"
+                        class="flex-1 py-2.5 bg-surface border border-white/10 text-textMuted font-bold rounded-xl hover:bg-surfaceHighlight transition text-sm">
+                        取消
+                    </button>
+                    <button onclick="window.USStockTab._applyPicker()"
+                        class="flex-1 py-2.5 bg-primary text-background font-bold rounded-xl hover:opacity-90 transition text-sm">
+                        確認套用
+                    </button>
+                </div>
+            </div>`;
+    },
+
+    _applyPicker() {
+        const checks = document.querySelectorAll('.usstock-sym-check:checked');
+        const selected = Array.from(checks).map(c => c.value);
+        if (selected.length === 0) {
+            if (typeof showToast === 'function') showToast('請至少選擇一支股票', 'error');
+            return;
+        }
+        AppStore.set('usStockSelectedSymbols', selected);
+        window.usStockSelectedSymbols = selected;
+        this.saveWatchlist();
+        this.renderWatchlistControls();
+        this.refreshMarketWatch();
+    },
 
     // ── Init ─────────────────────────────────────────────────────────────────
 
@@ -141,6 +221,10 @@ window.USStockTab = {
                 <h3 class="font-bold text-secondary flex items-center gap-2 flex-shrink-0">
                     <i data-lucide="star" class="w-4 h-4 text-yellow-500"></i> My US Stocks
                 </h3>
+                <button onclick="window.USStockTab.showPicker()"
+                    class="p-1.5 text-textMuted hover:text-primary hover:bg-white/5 rounded-lg transition" title="選擇標的">
+                    <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+                </button>
                 <div class="flex-1 min-w-0">
                     <div class="relative">
                         <input type="text" id="usStockAddInput" placeholder="${_t('marketPage.usStockAddPlaceholder')}" maxlength="10"

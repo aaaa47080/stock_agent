@@ -31,7 +31,7 @@ def _get_cache(key: str):
     return None
 
 
-def _set_cache(key: str, data, ttl: int = 300):
+def _set_cache(key: str, data, ttl: int = 600):  # 10 min default (yfinance ToS risk mitigation)
     _cache[key] = (data, datetime.now(timezone.utc) + timedelta(seconds=ttl))
 
 
