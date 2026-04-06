@@ -43,6 +43,11 @@
             refreshSeconds: 30,
             timezone: 'Asia/Tokyo',
         },
+        instock: {
+            label: 'India Stock',
+            refreshSeconds: 30,
+            timezone: 'Asia/Kolkata',
+        },
     };
 
     const HOLIDAY_CALENDAR = {
@@ -627,6 +632,29 @@
         return state;
     }
 
+    function getINStockState(config, parts) {
+        // NSE/BSE: 9:15-15:30 IST (continuous, no lunch break)
+        const minute = minutesSinceMidnight(parts);
+        let state;
+        if (!isWeekday(parts)) {
+            state = createState(config, { summary: t('status.marketClosed'), detail: t('status.weekendPaused') });
+        } else if (minute >= 9 * 60 + 15 && minute < 15 * 60 + 30) {
+            state = createState(config, {
+                isOpen: true,
+                summary: '印度股 Open',
+                detail: t('status.liveUpdate'),
+                refreshLabel: t('status.autoUpdate', { seconds: config.refreshSeconds }),
+                statusTone: 'open',
+                sessionType: 'regular',
+            });
+        } else if (minute >= 9 * 60 && minute < 9 * 60 + 15) {
+            state = createState(config, { summary: t('status.preMarket'), detail: '9:15 開市', sessionType: 'preopen' });
+        } else {
+            state = createState(config, { summary: t('status.marketClosed'), detail: t('status.paused') });
+        }
+        return state;
+    }
+
     function getUSStockState(config, parts) {
         const dateKey = getDateKey(parts);
         const minute = minutesSinceMidnight(parts);
@@ -738,6 +766,9 @@
         }
         if (marketType === 'jpstock') {
             return getJPStockState(config, parts);
+        }
+        if (marketType === 'instock') {
+            return getINStockState(config, parts);
         }
 
         return createState(config);

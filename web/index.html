@@ -638,6 +638,50 @@
                 </div>
             </div>
 
+            <!-- Tab: India Stock (印度股市) -->
+            <div id="instock-tab"
+                class="tab-content hidden h-full overflow-y-auto custom-scrollbar px-4 md:pl-6 md:pr-16 py-6 pb-40">
+                <div class="max-w-2xl mx-auto">
+                    <div id="instock-market-section">
+                        <div class="flex justify-between items-end mb-6 md:pr-14">
+                            <h2 class="font-serif text-3xl text-secondary">印度股市</h2>
+                            <div class="flex items-center gap-2">
+                                <span id="instock-last-updated" class="text-xs text-textMuted"></span>
+                                <button onclick="INStockTab.showPicker()" title="自選標的"
+                                    class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition">
+                                    <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="INStockTab.renderMarket()"
+                                    class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition">
+                                    <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="mb-4 flex flex-wrap items-center gap-2 text-xs">
+                            <span id="instock-market-status-badge" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border bg-white/5 text-textMuted border-white/10 font-bold">Checking schedule...</span>
+                            <span id="instock-market-refresh-note" class="text-textMuted/80">Auto refresh policy loading</span>
+                            <span id="instock-market-session-note" class="text-textMuted/60">Session info loading</span>
+                        </div>
+                        <div id="instock-list" class="space-y-3">
+                            <!-- Injected by instock.js -->
+                        </div>
+                    </div>
+                    <!-- Pulse Section -->
+                    <div id="instock-pulse-section" class="hidden">
+                        <div class="flex items-center gap-3 mb-6 md:pr-14">
+                            <button onclick="INStockTab.backToMarket()"
+                                class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition">
+                                <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                            </button>
+                            <h2 class="font-serif text-2xl text-secondary">印度股脈動</h2>
+                        </div>
+                        <div id="instock-pulse-content">
+                            <!-- Injected by instock.js -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Tab: Friends (Global Social Hub) -->
             <div id="friends-tab" class="tab-content hidden h-full overflow-hidden relative">
                 <!-- Dynamic Content Injected via components.js -->
@@ -1150,7 +1194,7 @@
 
     <!-- Scripts — ES Modules via Vite -->
     <script type="module" src="/scam-tracker/js/scam-tracker.js?v=48"></script>
-    <script type="module" src="/js/main.js?v=59"></script>
+    <script type="module" src="/js/main.js?v=60"></script>
     <!-- Legal Page Modal -->
     <div id="legal-modal" class="fixed inset-0 z-[9999] bg-background hidden flex-col">
         <nav data-shell-fixed-nav class="sticky top-0 z-10 bg-surface/95 backdrop-blur-xl border-b border-white/5">
