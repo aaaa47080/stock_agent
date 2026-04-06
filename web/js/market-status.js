@@ -38,6 +38,11 @@
             refreshSeconds: 30,
             timezone: 'Asia/Shanghai',
         },
+        jpstock: {
+            label: 'JP Stock',
+            refreshSeconds: 30,
+            timezone: 'Asia/Tokyo',
+        },
     };
 
     const HOLIDAY_CALENDAR = {
@@ -597,6 +602,31 @@
         return state;
     }
 
+    function getJPStockState(config, parts) {
+        // TSE: 9:00-11:30 morning, 12:30-15:30 afternoon (JST)
+        const minute = minutesSinceMidnight(parts);
+        let state;
+        if (!isWeekday(parts)) {
+            state = createState(config, { summary: t('status.marketClosed'), detail: t('status.weekendPaused') });
+        } else if ((minute >= 9 * 60 && minute < 11 * 60 + 30) || (minute >= 12 * 60 + 30 && minute < 15 * 60 + 30)) {
+            state = createState(config, {
+                isOpen: true,
+                summary: '日股 Open',
+                detail: t('status.liveUpdate'),
+                refreshLabel: t('status.autoUpdate', { seconds: config.refreshSeconds }),
+                statusTone: 'open',
+                sessionType: 'regular',
+            });
+        } else if (minute >= 11 * 60 + 30 && minute < 12 * 60 + 30) {
+            state = createState(config, { summary: '午間休市', detail: '12:30 恢復交易', sessionType: 'break' });
+        } else if (minute >= 8 * 60 + 30 && minute < 9 * 60) {
+            state = createState(config, { summary: t('status.preMarket'), detail: '9:00 開市', sessionType: 'preopen' });
+        } else {
+            state = createState(config, { summary: t('status.marketClosed'), detail: t('status.paused') });
+        }
+        return state;
+    }
+
     function getUSStockState(config, parts) {
         const dateKey = getDateKey(parts);
         const minute = minutesSinceMidnight(parts);
@@ -705,6 +735,9 @@
         }
         if (marketType === 'astock') {
             return getAStockState(config, parts);
+        }
+        if (marketType === 'jpstock') {
+            return getJPStockState(config, parts);
         }
 
         return createState(config);

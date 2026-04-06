@@ -43,6 +43,7 @@
     "forex": "Forex",
     "hkstock": "HK Stock",
     "astock": "A Share",
+    "jpstock": "JP Stock",
     "admin": "Admin"
   },
   "sidebar": {

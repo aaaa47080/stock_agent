@@ -43,6 +43,7 @@
     "forex": "外匯",
     "hkstock": "港股",
     "astock": "A股",
+    "jpstock": "日股",
     "admin": "管理後台"
   },
   "sidebar": {

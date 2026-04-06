@@ -37,6 +37,7 @@ const NAV_ITEMS = [
     { id: 'forex',     icon: 'arrow-left-right', label: 'Forex',     i18nKey: 'nav.forex',     defaultEnabled: true },
     { id: 'hkstock',   icon: 'landmark',         label: '港股',      i18nKey: 'nav.hkstock',   defaultEnabled: true },
     { id: 'astock',    icon: 'building-2',       label: 'A股',       i18nKey: 'nav.astock',    defaultEnabled: true },
+    { id: 'jpstock',   icon: 'sun',              label: '日股',      i18nKey: 'nav.jpstock',   defaultEnabled: true },
     {
         id: 'friends',
         icon: 'users',
@@ -83,7 +84,7 @@ const NAV_ITEMS = [
  */
 const NavPreferences = {
     STORAGE_KEY: 'userNavPreferences',
-    PREFERENCES_VERSION: 9,  // v9: 新增 astock 陸股板塊
+    PREFERENCES_VERSION: 10,  // v10: 新增 jpstock 日股板塊
     MIN_ENABLED_ITEMS: 2,
     _cache: null,
 

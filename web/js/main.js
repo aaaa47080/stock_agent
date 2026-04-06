@@ -99,7 +99,7 @@ import './friends.js';
 import './messages.js';
 
 // ─── Phase 11: Navigation ─────────────────────────────────────────────────
-import './nav-config.js?v=58';
+import './nav-config.js?v=59';
 import './global-nav.js';
 
 // ─── Phase 12: Market data ────────────────────────────────────────────────
@@ -114,6 +114,7 @@ import './commodity.js';
 import './forex.js';
 import './hkstock.js';
 import './astock.js';
+import './jpstock.js';
 
 // ─── Phase 13: Forum ──────────────────────────────────────────────────────
 import './forum-config.js';
@@ -131,7 +132,7 @@ import './admin.js';
 import './admin-stats.js';
 
 // ─── Phase 16: SPA & modals ───────────────────────────────────────────────
-import './spa.js?v=58';
+import './spa.js?v=59';
 import './modals.js';
 import './legal.js';
 
