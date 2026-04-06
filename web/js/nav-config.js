@@ -54,7 +54,7 @@ const NAV_ITEMS = [
         icon: 'shield-alert',
         label: 'Safety',
         i18nKey: 'nav.safety',
-        defaultEnabled: true,
+        defaultEnabled: false,  // 非核心功能，預設隱藏，可從 Customize 開啟
     },
     {
         id: 'admin',
@@ -81,7 +81,7 @@ const NAV_ITEMS = [
  */
 const NavPreferences = {
     STORAGE_KEY: 'userNavPreferences',
-    PREFERENCES_VERSION: 6,  // v6: friends/forum 改為 defaultEnabled:false
+    PREFERENCES_VERSION: 7,  // v7: safety 改為 defaultEnabled:false
     MIN_ENABLED_ITEMS: 2,
     _cache: null,
 
