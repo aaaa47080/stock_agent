@@ -382,8 +382,34 @@ async function createNewChat() {
 }
 window.createNewChat = createNewChat;
 
-function showWelcomeScreen() {
+async function showWelcomeScreen() {
     const container = document.getElementById('chat-messages');
+
+    // 檢查是否已設定 API Key，決定是否顯示 onboarding banner
+    let hasKey = false;
+    try {
+        if (window.APIKeyManager && window.AuthManager?.isLoggedIn()) {
+            hasKey = await window.APIKeyManager.hasAnyKey();
+        }
+    } catch (_) {}
+
+    const onboardingBanner = !hasKey ? `
+    <div class="mt-6 rounded-2xl border border-primary/20 bg-primary/5 px-5 py-4 text-sm opacity-0 animate-fade-in-up" style="animation-delay: 0.3s; animation-fill-mode: forwards;">
+        <div class="flex items-start gap-3">
+            <span class="text-xl">🔑</span>
+            <div>
+                <p class="font-bold text-primary mb-1">設定 API Key 開始使用</p>
+                <p class="text-textMuted/80 text-xs leading-relaxed">
+                    需要 OpenAI、Google Gemini 或 OpenRouter API Key 才能啟動 AI 分析功能。<br>Key 加密存放於伺服器，換手機後登入自動還原。
+                </p>
+                <button onclick="if(typeof switchTab==='function') switchTab('settings')"
+                    class="mt-3 inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-primary text-background text-xs font-bold hover:opacity-90 transition">
+                    <i data-lucide="settings-2" class="w-3 h-3"></i>&nbsp;前往設定
+                </button>
+            </div>
+        </div>
+    </div>` : '';
+
     container.innerHTML = `
     <div class="bot-message opacity-0 animate-fade-in-up" style="animation-delay: 0.1s; animation-fill-mode: forwards;">
         <div class="flex flex-col items-center justify-center mb-8">
@@ -395,8 +421,9 @@ function showWelcomeScreen() {
         <p class="text-textMuted text-lg font-light leading-relaxed text-center">
             AI-powered crypto analysis. Start a new conversation.
         </p>
+        ${onboardingBanner}
         <div class="flex flex-wrap gap-3 mt-8 justify-center">
-             <button onclick="quickAsk('Analyze BTC trend')" class="px-5 py-2.5 rounded-full bg-surface hover:bg-surfaceHighlight border border-white/5 text-sm text-textMuted hover:text-primary transition shadow-sm">
+            <button onclick="quickAsk('Analyze BTC trend')" class="px-5 py-2.5 rounded-full bg-surface hover:bg-surfaceHighlight border border-white/5 text-sm text-textMuted hover:text-primary transition shadow-sm">
                 Bitcoin Trend
             </button>
             <button onclick="quickAsk('ETH Funding Rates')" class="px-5 py-2.5 rounded-full bg-surface hover:bg-surfaceHighlight border border-white/5 text-sm text-textMuted hover:text-primary transition shadow-sm">
@@ -404,6 +431,7 @@ function showWelcomeScreen() {
             </button>
         </div>
     </div>`;
+    createIconsIn(document.getElementById('chat-messages'));
     createIconsIn(document.getElementById('chat-session-list'));
 }
 window.showWelcomeScreen = showWelcomeScreen;

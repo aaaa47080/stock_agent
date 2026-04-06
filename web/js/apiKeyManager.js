@@ -503,6 +503,15 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(updateLLMStatusUI, 100);
 });
 
+// 登入成功後自動刷新 Key 狀態（Pi 登入 & 頁面重載恢復登入）
+['pi-auth-success', 'auth:ready'].forEach((event) => {
+    window.addEventListener(event, () => {
+        APIKeyManager._maskedKeysCache = null;
+        APIKeyManager._lastFetchTime = 0;
+        setTimeout(updateLLMStatusUI, 400);
+    });
+});
+
 export {
     APIKeyManager,
     updateLLMStatusUI,

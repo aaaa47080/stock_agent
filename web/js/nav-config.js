@@ -40,14 +40,14 @@ const NAV_ITEMS = [
         icon: 'users',
         label: 'Friends',
         i18nKey: 'nav.friends',
-        defaultEnabled: true,
+        defaultEnabled: false,  // Phase 2：社群功能，預設隱藏，可從 Customize 開啟
     },
     {
         id: 'forum',
         icon: 'messages-square',
         label: 'Forum',
         i18nKey: 'nav.forum',
-        defaultEnabled: true,
+        defaultEnabled: false,  // Phase 2：社群功能，預設隱藏，可從 Customize 開啟
     },
     {
         id: 'safety',
@@ -81,7 +81,7 @@ const NAV_ITEMS = [
  */
 const NavPreferences = {
     STORAGE_KEY: 'userNavPreferences',
-    PREFERENCES_VERSION: 5,
+    PREFERENCES_VERSION: 6,  // v6: friends/forum 改為 defaultEnabled:false
     MIN_ENABLED_ITEMS: 2,
     _cache: null,
 
