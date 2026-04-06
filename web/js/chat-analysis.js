@@ -23,6 +23,56 @@ function cleanupStaleButtons() {
 }
 window.cleanupStaleButtons = cleanupStaleButtons;
 
+// ── Cross-Tab Navigation ──────────────────────────────────────────────────────
+// Maps AI-resolved market names (from responseMetadata) and user keywords to tab IDs.
+const _MARKET_TAB_MAP = {
+    crypto:    { tab: 'crypto',   label: '加密貨幣', icon: 'bitcoin' },
+    tw_stock:  { tab: 'twstock',  label: '台股',     icon: 'trending-up' },
+    us_stock:  { tab: 'usstock',  label: '美股',     icon: 'bar-chart-2' },
+    commodity: { tab: 'commodity',label: '商品',     icon: 'package' },
+    forex:     { tab: 'forex',    label: '外匯',     icon: 'dollar-sign' },
+};
+
+// Client-side keyword patterns for instant hint (before AI response)
+const _TAB_KEYWORD_RULES = [
+    { tab: 'commodity', re: /黃金|貴金屬|silver|gold|xau|xag|原油|石油|oil|crude|天然氣|natural.?gas|銅|copper|大豆|小麥|玉米/i },
+    { tab: 'forex',     re: /外匯|匯率|forex|usd\/|eur\/|gbp\/|jpy\/|cny\/|twd\/|美元|歐元|英鎊|日元|日幣|人民幣|澳幣/i },
+    { tab: 'twstock',   re: /台股|台灣股|twse|加權指數|大盤|0050|2330|台積電|聯發科/i },
+    { tab: 'usstock',   re: /美股|nasdaq|s&p\s*500|道瓊|dow\s*jones|標普|蘋果|apple|tesla|microsoft|nvda|輝達|英偉達/i },
+    { tab: 'crypto',    re: /\b(btc|eth|bnb|xrp|sol|doge|usdt)\b|比特幣|以太幣|以太坊|加密貨幣|幣圈/i },
+];
+
+function _detectTabFromText(text) {
+    for (const rule of _TAB_KEYWORD_RULES) {
+        if (rule.re.test(text)) return rule.tab;
+    }
+    return null;
+}
+
+// Append a small navigation chip to a message element
+function _appendNavChip(el, tabId, style = 'subtle') {
+    const info = Object.values(_MARKET_TAB_MAP).find((m) => m.tab === tabId);
+    if (!info || typeof switchTab !== 'function') return;
+    const wrap = document.createElement('div');
+    wrap.className = 'mt-2 flex items-center';
+    if (style === 'prominent') {
+        wrap.innerHTML = `<button onclick="switchTab('${info.tab}')"
+            class="inline-flex items-center gap-1.5 text-xs px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 transition">
+            <i data-lucide="external-link" class="w-3 h-3"></i>
+            前往 ${info.label} 板塊查看即時數據
+        </button>`;
+    } else {
+        wrap.innerHTML = `<button onclick="switchTab('${info.tab}')"
+            class="inline-flex items-center gap-1.5 text-xs px-3 py-1 rounded-full bg-white/5 border border-white/10 text-textMuted hover:text-primary hover:border-primary/30 transition">
+            <i data-lucide="${info.icon}" class="w-3 h-3"></i>
+            前往 ${info.label} 板塊
+        </button>`;
+    }
+    el.appendChild(wrap);
+    setTimeout(() => createIconsIn(wrap), 0);
+}
+window._appendNavChip = _appendNavChip;
+
 function getSelectedAnalysisMode() {
     const select = document.getElementById('analysis-mode-select');
     return select?.value || 'quick';
@@ -286,7 +336,11 @@ async function sendMessage() {
     const analysisMode = getSelectedAnalysisMode();
 
     input.value = '';
-    appendMessage('user', text);
+    const userMsgDiv = appendMessage('user', text);
+
+    // Instant cross-tab hint: detect market intent from user's text
+    const _detectedTab = _detectTabFromText(text);
+    if (_detectedTab) _appendNavChip(userMsgDiv, _detectedTab, 'subtle');
 
     const botMsgDiv = appendMessage('bot', '');
     const startTime = Date.now();
@@ -545,6 +599,15 @@ window.currentAnalysisController = AppStore.get('currentAnalysisController');
                         if (window.lucide) {
                             lucide.createIcons({ nodes: [botMsgDiv] });
                         }
+
+                        // Cross-tab nav: if AI resolved a specific market, show a prominent
+                        // "Go to [Tab]" button so user can check live data in one click.
+                        const _resolvedTab = responseMetadata?.resolved_market
+                            ? (_MARKET_TAB_MAP[responseMetadata.resolved_market]?.tab || null)
+                            : null;
+                        // Also fall back to client-side detection if backend didn't resolve one
+                        const _navTab = _resolvedTab || _detectTabFromText(text);
+                        if (_navTab) _appendNavChip(botMsgDiv, _navTab, 'prominent');
 
                         // Refresh sessions list (to update title if it was new)
                         loadSessions();
