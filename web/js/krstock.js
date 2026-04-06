@@ -172,20 +172,34 @@ const KRStockTab = {
 
             listEl.innerHTML = '';
             (data.stocks || []).forEach(item => {
-                const isUp  = item.changePercent >= 0;
+                const isUp = item.changePercent >= 0;
                 const color = isUp ? 'text-success' : 'text-danger';
-                const arrow = isUp ? '▲' : '▼';
+                const arrow = isUp ? '?' : '?';
+                const symbol = escapeHtml(item.symbol);
+                const cardCode = symbol.replace('.KS', '').replace('.KQ', '').slice(0, 2);
                 const card = document.createElement('div');
-                card.className = 'bg-surface border border-white/5 rounded-2xl p-4 flex items-center justify-between cursor-pointer hover:border-primary/30 transition';
+                card.className =
+                    'group bg-surface/20 hover:bg-surface/40 border border-white/5 rounded-2xl p-4 transition-all duration-300 cursor-pointer';
                 card.onclick = () => this.switchSubTab('pulse', item.symbol);
                 card.innerHTML = `
-                    <div>
-                        <div class="font-bold text-secondary text-sm">${escapeHtml(item.name)}</div>
-                        <div class="text-xs text-textMuted">${escapeHtml(item.symbol)} · ${item.currency || 'KRW'}</div>
-                    </div>
-                    <div class="text-right">
-                        <div class="font-mono font-bold text-secondary">${item.price.toLocaleString(undefined, {maximumFractionDigits: 0})}</div>
-                        <div class="text-xs font-bold ${color}">${arrow} ${item.changePercent > 0 ? '+' : ''}${item.changePercent.toFixed(2)}%</div>
+                    <div class="flex items-start gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-background flex items-center justify-center text-xs font-bold text-primary border border-white/5 group-hover:scale-110 transition-transform flex-shrink-0 mt-0.5">${cardCode}</div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="min-w-0">
+                                    <div class="font-bold text-sm text-secondary leading-tight">${escapeHtml(item.name)}</div>
+                                    <div class="text-[9px] text-textMuted font-bold tracking-wider uppercase opacity-60">${symbol} ? ${item.currency || 'KRW'}</div>
+                                </div>
+                                <div class="text-right flex-shrink-0">
+                                    <div class="text-sm font-black ${color}">${item.changePercent > 0 ? '+' : ''}${item.changePercent.toFixed(2)}%</div>
+                                    <div class="text-[9px] text-textMuted uppercase opacity-40 font-bold">24H</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center justify-between mt-1.5">
+                                <div class="text-[11px] text-textMuted font-mono opacity-80">${item.price.toLocaleString(undefined, {maximumFractionDigits: 0})} ${item.currency || 'KRW'}</div>
+                                <div class="text-xs font-bold ${color}">${arrow} ${Math.abs(item.changePercent).toFixed(2)}%</div>
+                            </div>
+                        </div>
                     </div>`;
                 listEl.appendChild(card);
             });
