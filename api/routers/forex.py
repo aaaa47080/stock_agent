@@ -36,14 +36,23 @@ def _set_cache(key: str, data, ttl: int = 60):
     _cache[key] = (data, datetime.now(timezone.utc) + timedelta(seconds=ttl))
 
 
-# ── Default pairs ───────────────────────────────────────────────────────────────
+# ── Known pairs metadata (covers all 15 frontend picker options) ─────────────────
 DEFAULT_PAIRS = [
-    {"symbol": "TWD=X", "name": "USD/TWD", "base": "USD", "quote": "TWD"},
+    {"symbol": "TWD=X",    "name": "USD/TWD", "base": "USD", "quote": "TWD"},
+    {"symbol": "JPY=X",    "name": "USD/JPY", "base": "USD", "quote": "JPY"},
+    {"symbol": "CNY=X",    "name": "USD/CNY", "base": "USD", "quote": "CNY"},
+    {"symbol": "HKD=X",    "name": "USD/HKD", "base": "USD", "quote": "HKD"},
+    {"symbol": "AUDUSD=X", "name": "AUD/USD", "base": "AUD", "quote": "USD"},
+    {"symbol": "NZDUSD=X", "name": "NZD/USD", "base": "NZD", "quote": "USD"},
+    {"symbol": "KRW=X",    "name": "USD/KRW", "base": "USD", "quote": "KRW"},
     {"symbol": "EURUSD=X", "name": "EUR/USD", "base": "EUR", "quote": "USD"},
     {"symbol": "GBPUSD=X", "name": "GBP/USD", "base": "GBP", "quote": "USD"},
-    {"symbol": "JPY=X", "name": "USD/JPY", "base": "USD", "quote": "JPY"},
-    {"symbol": "AUDUSD=X", "name": "AUD/USD", "base": "AUD", "quote": "USD"},
-    {"symbol": "CNY=X", "name": "USD/CNY", "base": "USD", "quote": "CNY"},
+    {"symbol": "USDCHF=X", "name": "USD/CHF", "base": "USD", "quote": "CHF"},
+    {"symbol": "USDCAD=X", "name": "USD/CAD", "base": "USD", "quote": "CAD"},
+    {"symbol": "EURGBP=X", "name": "EUR/GBP", "base": "EUR", "quote": "GBP"},
+    {"symbol": "EURJPY=X", "name": "EUR/JPY", "base": "EUR", "quote": "JPY"},
+    {"symbol": "GBPJPY=X", "name": "GBP/JPY", "base": "GBP", "quote": "JPY"},
+    {"symbol": "AUDJPY=X", "name": "AUD/JPY", "base": "AUD", "quote": "JPY"},
 ]
 
 

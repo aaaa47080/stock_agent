@@ -35,14 +35,23 @@ def _set_cache(key: str, data, ttl: int = 300):
     _cache[key] = (data, datetime.now(timezone.utc) + timedelta(seconds=ttl))
 
 
-# ── Default symbols ─────────────────────────────────────────────────────────────
+# ── Known symbols metadata (covers all 15 frontend picker options) ──────────────
 DEFAULT_COMMODITIES = [
-    {"symbol": "GC=F", "name": "黃金 Gold", "unit": "USD/oz"},
-    {"symbol": "SI=F", "name": "白銀 Silver", "unit": "USD/oz"},
-    {"symbol": "CL=F", "name": "WTI 原油 Oil", "unit": "USD/bbl"},
-    {"symbol": "BZ=F", "name": "布蘭特原油 Brent", "unit": "USD/bbl"},
-    {"symbol": "NG=F", "name": "天然氣 Nat.Gas", "unit": "USD/MMBtu"},
-    {"symbol": "HG=F", "name": "銅 Copper", "unit": "USD/lb"},
+    {"symbol": "GC=F",  "name": "黃金 Gold",          "unit": "USD/oz"},
+    {"symbol": "SI=F",  "name": "白銀 Silver",         "unit": "USD/oz"},
+    {"symbol": "PL=F",  "name": "鉑金 Platinum",       "unit": "USD/oz"},
+    {"symbol": "PA=F",  "name": "鈀金 Palladium",      "unit": "USD/oz"},
+    {"symbol": "CL=F",  "name": "WTI 原油",            "unit": "USD/bbl"},
+    {"symbol": "BZ=F",  "name": "布蘭特原油 Brent",    "unit": "USD/bbl"},
+    {"symbol": "NG=F",  "name": "天然氣 Nat.Gas",      "unit": "USD/MMBtu"},
+    {"symbol": "HG=F",  "name": "銅 Copper",           "unit": "USD/lb"},
+    {"symbol": "ALI=F", "name": "鋁 Aluminum",         "unit": "USD/lb"},
+    {"symbol": "ZW=F",  "name": "小麥 Wheat",          "unit": "USD/bu"},
+    {"symbol": "ZC=F",  "name": "玉米 Corn",           "unit": "USD/bu"},
+    {"symbol": "ZS=F",  "name": "黃豆 Soybeans",       "unit": "USD/bu"},
+    {"symbol": "KC=F",  "name": "咖啡 Coffee",         "unit": "USD/lb"},
+    {"symbol": "SB=F",  "name": "糖 Sugar",            "unit": "USD/lb"},
+    {"symbol": "CT=F",  "name": "棉花 Cotton",         "unit": "USD/lb"},
 ]
 
 
