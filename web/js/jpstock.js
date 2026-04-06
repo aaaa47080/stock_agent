@@ -201,7 +201,7 @@ const JPStockTab = {
                             </div>
                             <div class="flex items-center justify-between mt-1.5">
                                 <div class="text-[11px] text-textMuted font-mono opacity-80">${item.price.toLocaleString(undefined, {maximumFractionDigits: 1})} ${item.currency || 'JPY'}</div>
-                                <div class="text-xs font-bold ${color}">${arrow} ${Math.abs(item.changePercent).toFixed(2)}%</div>
+                                <div class="text-xs font-bold ${color}">${arrow} ${item.change >= 0 ? '+' : ''}${item.change.toFixed(1)}</div>
                             </div>
                         </div>
                     </div>`;

@@ -197,7 +197,7 @@ const KRStockTab = {
                             </div>
                             <div class="flex items-center justify-between mt-1.5">
                                 <div class="text-[11px] text-textMuted font-mono opacity-80">${item.price.toLocaleString(undefined, {maximumFractionDigits: 0})} ${item.currency || 'KRW'}</div>
-                                <div class="text-xs font-bold ${color}">${arrow} ${Math.abs(item.changePercent).toFixed(2)}%</div>
+                                <div class="text-xs font-bold ${color}">${arrow} ${item.change >= 0 ? '+' : ''}${item.change.toFixed(0)}</div>
                             </div>
                         </div>
                     </div>`;
