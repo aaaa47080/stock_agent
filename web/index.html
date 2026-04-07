@@ -181,41 +181,29 @@
 
                 <!-- Messages Area -->
                 <div id="chat-messages" data-shell-scroll data-shell-scroll-extra="1rem"
-                    class="flex-1 overflow-y-auto custom-scrollbar px-4 md:px-8 py-6 space-y-6"
+                    class="flex-1 overflow-y-auto custom-scrollbar py-6"
+                    style="padding-left: max(1rem, env(safe-area-inset-left)); padding-right: max(1rem, env(safe-area-inset-right));"
                     aria-live="polite" aria-atomic="false">
-                    <!-- Welcome -->
-                    <div class="bot-message opacity-0 animate-fade-in-up"
+                    <!-- Welcome — centered, within the same max-width column -->
+                    <div class="opacity-0 animate-fade-in-up max-w-3xl mx-auto px-2"
                         style="animation-delay: 0.1s; animation-fill-mode: forwards;">
-                        <div class="flex flex-col items-center justify-center mb-8">
+                        <div class="flex flex-col items-center justify-center pt-8 pb-6">
                             <h1 class="font-serif text-3xl md:text-4xl leading-tight text-center">
-                                <span class="text-secondary" data-i18n="chat.welcomeTo">Welcome to</span><br>
-                                <span
-                                    class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">CryptoMind</span>
+                                <span class="text-secondary" data-i18n="chat.welcomeTo">Welcome to</span>
+                                <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent ml-2">CryptoMind</span>
                             </h1>
-                            <p class="text-textMuted mt-2">Good <span id="greeting-time">day</span>.</p>
+                            <p class="text-textMuted/60 text-sm mt-2">Good <span id="greeting-time">day</span>.</p>
                         </div>
-                        <p class="text-textMuted text-lg font-light leading-relaxed text-center"
-                            data-i18n="chat.subtitle">
-                            AI-powered crypto analysis and trading insights. Monitor markets and make informed
-                            decisions.
-                        </p>
-
-                        <div class="flex flex-wrap gap-3 mt-8 justify-center">
+                        <div class="flex flex-wrap gap-2 justify-center pb-4">
                             <button onclick="quickAsk('Analyze BTC trend')"
-                                class="px-5 py-2.5 rounded-full bg-surface hover:bg-surfaceHighlight border border-white/5 text-sm text-textMuted hover:text-primary transition shadow-sm"
-                                data-i18n="chat.btnBtcTrend">
-                                Bitcoin Trend
-                            </button>
+                                class="px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/8 text-sm text-textMuted hover:text-secondary transition"
+                                data-i18n="chat.btnBtcTrend">Bitcoin Trend</button>
                             <button onclick="quickAsk('ETH Funding Rates')"
-                                class="px-5 py-2.5 rounded-full bg-surface hover:bg-surfaceHighlight border border-white/5 text-sm text-textMuted hover:text-primary transition shadow-sm"
-                                data-i18n="chat.btnEthRates">
-                                ETH Rates
-                            </button>
+                                class="px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/8 text-sm text-textMuted hover:text-secondary transition"
+                                data-i18n="chat.btnEthRates">ETH Rates</button>
                             <button onclick="quickAsk('Market Sentiment')"
-                                class="px-5 py-2.5 rounded-full bg-surface hover:bg-surfaceHighlight border border-white/5 text-sm text-textMuted hover:text-primary transition shadow-sm"
-                                data-i18n="chat.btnSentiment">
-                                Global Sentiment
-                            </button>
+                                class="px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/8 text-sm text-textMuted hover:text-secondary transition"
+                                data-i18n="chat.btnSentiment">Global Sentiment</button>
                         </div>
                     </div>
                 </div>

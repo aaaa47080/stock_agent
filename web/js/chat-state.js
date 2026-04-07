@@ -387,15 +387,15 @@ function appendMessage(role, content) {
     const div = document.createElement('div');
 
     if (role === 'user') {
-        row.className = 'user-row';
-        div.className = 'message-bubble user-message';
+        row.className = 'chat-row chat-row-user';
+        div.className = 'chat-bubble-user';
         row.appendChild(div);
     } else {
-        row.className = 'bot-bubble-row';
+        row.className = 'chat-row chat-row-ai';
         const avatar = document.createElement('div');
-        avatar.className = 'bot-avatar';
-        avatar.textContent = 'AI';
-        div.className = 'message-bubble bot-bubble prose';
+        avatar.className = 'chat-avatar';
+        avatar.innerHTML = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>';
+        div.className = 'chat-content-ai prose';
         row.appendChild(avatar);
         row.appendChild(div);
     }

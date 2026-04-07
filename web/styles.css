@@ -68,88 +68,95 @@ button, a, input, select, textarea, .btn, .tab-btn, .nav-btn, .card, .modal, .to
 }
 
 /* Chat Interface - Pi Style */
-.message-bubble {
-    max-width: 82%;
-    padding: 0.875rem 1.125rem;
-    position: relative;
-    font-size: 0.9375rem;
-    line-height: 1.65;
-    border-radius: 1.25rem;
-    margin-bottom: 0.5rem;
-}
+/* ── Chat message layout ─────────────────────────────────────── */
 
-@media (min-width: 768px) {
-    .message-bubble {
-        max-width: 70%;
-    }
-}
-
-/* User messages — right-aligned, accent tint */
-.user-message {
-    background: rgba(139, 92, 246, 0.18);
-    border: 1px solid rgba(139, 92, 246, 0.25);
-    color: var(--color-text-primary);
-    margin-left: auto;
-    border-bottom-right-radius: 0.375rem;
-}
-
-.bot-message {
-    background: transparent;
-    color: var(--color-text-primary);
-    padding-left: 0;
-    padding-right: 0;
-    margin-bottom: 0.5rem;
-}
-
-/* AI messages — left-aligned, clean subtle bg */
-.bot-bubble {
-    background: rgba(255, 255, 255, 0.04);
-    color: var(--color-text-primary);
-    border-radius: 1.25rem;
-    border-bottom-left-radius: 0.375rem;
-    padding: 0.875rem 1.125rem;
-    border: 1px solid rgba(255, 255, 255, 0.07);
-    margin-right: auto;
-    max-width: 82%;
-    margin-bottom: 0.5rem;
-}
-
-@media (min-width: 768px) {
-    .bot-bubble {
-        max-width: 70%;
-    }
-}
-
-/* Message row wrapper — adds avatar space for AI */
-.bot-bubble-row {
+/* Shared message row */
+.chat-row {
     display: flex;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+    max-width: 48rem;
+    margin: 0 auto;
+    width: 100%;
+}
+
+/* User row — right side */
+.chat-row-user {
+    justify-content: flex-end;
+}
+
+/* AI row — left side, full width */
+.chat-row-ai {
     align-items: flex-start;
-    gap: 0.625rem;
-    margin-bottom: 0.75rem;
 }
-.bot-bubble-row .bot-bubble {
-    margin-bottom: 0;
-}
-.bot-avatar {
-    width: 1.75rem;
-    height: 1.75rem;
+
+/* AI avatar circle */
+.chat-avatar {
+    width: 1.625rem;
+    height: 1.625rem;
     border-radius: 50%;
-    background: linear-gradient(135deg, #7c3aed, #6d28d9);
+    background: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
     display: flex;
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-    margin-top: 0.125rem;
-    font-size: 0.65rem;
-    font-weight: 700;
-    color: white;
-    letter-spacing: 0.02em;
+    margin-top: 0.1rem;
 }
-.user-row {
-    display: flex;
-    justify-content: flex-end;
-    margin-bottom: 0.75rem;
+.chat-avatar svg {
+    width: 0.9rem;
+    height: 0.9rem;
+    fill: white;
 }
+
+/* User bubble */
+.chat-bubble-user {
+    max-width: min(72%, 32rem);
+    background: rgba(255,255,255,0.09);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 1.125rem 1.125rem 0.25rem 1.125rem;
+    padding: 0.625rem 1rem;
+    font-size: 0.9375rem;
+    line-height: 1.6;
+    color: var(--color-text-primary);
+    word-break: break-word;
+}
+
+/* AI content — no bubble, just text */
+.chat-content-ai {
+    flex: 1;
+    min-width: 0;
+    padding-top: 0.05rem;
+    font-size: 0.9375rem;
+    line-height: 1.75;
+    color: var(--color-text-secondary, var(--color-text-primary));
+}
+
+/* ── Legacy classes kept for backward compat ─────────────────── */
+.message-bubble { max-width: 72%; padding: 0.625rem 1rem; border-radius: 1.125rem; }
+.user-message {
+    background: rgba(255,255,255,0.09);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: var(--color-text-primary);
+    margin-left: auto;
+    border-bottom-right-radius: 0.25rem;
+}
+.bot-message { background: transparent; padding-left: 0; padding-right: 0; }
+.bot-bubble {
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin-right: auto;
+    max-width: 100%;
+}
+.bot-bubble-row { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.25rem 0; max-width: 48rem; margin: 0 auto; }
+.bot-avatar {
+    width: 1.625rem; height: 1.625rem; border-radius: 50%;
+    background: linear-gradient(135deg, #7c3aed, #4f46e5);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 0.1rem;
+    font-size: 0.6rem; font-weight: 700; color: white; letter-spacing: 0.02em;
+}
+.user-row { display: flex; justify-content: flex-end; max-width: 48rem; margin: 0 auto; padding: 0.25rem 0; }
 
 /* Markdown Styling (Softer) */
 .prose h1, .prose h2, .prose h3 {
