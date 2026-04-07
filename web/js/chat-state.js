@@ -26,7 +26,30 @@ if (!Object.getOwnPropertyDescriptor(window, 'isAnalyzing')) {
 let _cachedUserProvider = null;
 async function getCachedUserProvider(forceRefresh = false) {
     if (!forceRefresh && _cachedUserProvider) return _cachedUserProvider;
+
+    // 1. 先試 APIKeyManager
     _cachedUserProvider = (await window.APIKeyManager?.getCurrentProvider()) || null;
+
+    // 2. Fallback：若 APIKeyManager 回 null，從 settings 確認 primary_model_provider
+    if (!_cachedUserProvider && typeof hydrateSettingsFromBackend === 'function') {
+        try {
+            const hydrated = await hydrateSettingsFromBackend();
+            const provider = hydrated?.settings?.primary_model_provider;
+            if (provider) {
+                if (window.APIKeyManager?.setSelectedProvider) {
+                    window.APIKeyManager.setSelectedProvider(provider);
+                }
+                _cachedUserProvider = provider;
+            }
+        } catch (_) {}
+    }
+
+    // 3. 最後保底：localStorage 中有 selectedProvider 就信任它
+    if (!_cachedUserProvider) {
+        const saved = localStorage.getItem('selectedProvider');
+        if (saved) _cachedUserProvider = saved;
+    }
+
     return _cachedUserProvider;
 }
 window.getCachedUserProvider = getCachedUserProvider;

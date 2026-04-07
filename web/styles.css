@@ -897,7 +897,7 @@ nav.sticky {
     }
 
     #chat-messages {
-        padding-bottom: calc(13rem + var(--mobile-safe-bottom) + var(--chat-keyboard-offset));
+        padding-bottom: calc(9rem + var(--mobile-safe-bottom) + var(--chat-keyboard-offset));
     }
 
     #no-llm-key-warning {
@@ -909,8 +909,8 @@ nav.sticky {
         left: 0 !important;
         right: 0 !important;
         bottom: 0 !important;
-        padding: 0.625rem 0.75rem;
-        padding-bottom: calc(var(--mobile-nav-clearance) + var(--chat-keyboard-offset) + 0.5rem);
+        padding: 0.5rem 0.75rem;
+        padding-bottom: calc(4.75rem + var(--mobile-safe-bottom) + var(--chat-keyboard-offset));
     }
 
     [data-shell-fixed-input] > div {
@@ -919,20 +919,14 @@ nav.sticky {
         min-width: 0;
     }
 
-    [data-shell-fixed-input] > div > .bg-surface\/90 {
-        width: 100%;
-        min-width: 0;
-        display: grid;
-        grid-template-columns: minmax(5.5rem, 6.25rem) 2.5rem minmax(0, 1fr) 2.75rem;
+    [data-shell-fixed-input] .flex.items-end {
         align-items: center;
-        gap: 0.375rem;
-        padding: 0.5rem;
-        border-radius: 1.5rem;
     }
 
-    #analysis-mode-select,
     #user-input {
         min-width: 0;
+        font-size: 0.9375rem;
+    }
         width: 100%;
     }
 
