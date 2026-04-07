@@ -515,6 +515,16 @@
                             <h2 class="font-serif text-3xl text-secondary">港股市場</h2>
                             <div class="flex items-center gap-2">
                                 <span id="hkstock-last-updated" class="text-xs text-textMuted"></span>
+                                <div class="relative">
+                                    <input type="text" id="hkstock-add-input" placeholder="代碼" maxlength="12"
+                                        oninput="this.value = this.value.toUpperCase()"
+                                        onkeypress="if(event.key==='Enter') HKStockTab.addStock(this.value)"
+                                        class="w-24 bg-background/50 border border-white/10 rounded-lg pl-2 pr-7 py-1 text-xs focus:outline-none focus:border-primary transition-colors text-white placeholder-textMuted/50">
+                                    <button onclick="HKStockTab.addStock(document.getElementById('hkstock-add-input').value)"
+                                        class="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 text-textMuted hover:text-primary transition-colors">
+                                        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                                    </button>
+                                </div>
                                 <button onclick="HKStockTab.showPicker()" title="自選標的"
                                     class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition">
                                     <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
@@ -559,6 +569,16 @@
                             <h2 class="font-serif text-3xl text-secondary">陸股市場</h2>
                             <div class="flex items-center gap-2">
                                 <span id="astock-last-updated" class="text-xs text-textMuted"></span>
+                                <div class="relative">
+                                    <input type="text" id="astock-add-input" placeholder="代碼" maxlength="12"
+                                        oninput="this.value = this.value.toUpperCase()"
+                                        onkeypress="if(event.key==='Enter') AStockTab.addStock(this.value)"
+                                        class="w-24 bg-background/50 border border-white/10 rounded-lg pl-2 pr-7 py-1 text-xs focus:outline-none focus:border-primary transition-colors text-white placeholder-textMuted/50">
+                                    <button onclick="AStockTab.addStock(document.getElementById('astock-add-input').value)"
+                                        class="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 text-textMuted hover:text-primary transition-colors">
+                                        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                                    </button>
+                                </div>
                                 <button onclick="AStockTab.showPicker()" title="自選標的"
                                     class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition">
                                     <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
@@ -603,6 +623,16 @@
                             <h2 class="font-serif text-3xl text-secondary">日股市場</h2>
                             <div class="flex items-center gap-2">
                                 <span id="jpstock-last-updated" class="text-xs text-textMuted"></span>
+                                <div class="relative">
+                                    <input type="text" id="jpstock-add-input" placeholder="代碼" maxlength="12"
+                                        oninput="this.value = this.value.toUpperCase()"
+                                        onkeypress="if(event.key==='Enter') JPStockTab.addStock(this.value)"
+                                        class="w-24 bg-background/50 border border-white/10 rounded-lg pl-2 pr-7 py-1 text-xs focus:outline-none focus:border-primary transition-colors text-white placeholder-textMuted/50">
+                                    <button onclick="JPStockTab.addStock(document.getElementById('jpstock-add-input').value)"
+                                        class="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 text-textMuted hover:text-primary transition-colors">
+                                        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                                    </button>
+                                </div>
                                 <button onclick="JPStockTab.showPicker()" title="自選標的"
                                     class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition">
                                     <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
@@ -647,6 +677,16 @@
                             <h2 class="font-serif text-3xl text-secondary">印度股市</h2>
                             <div class="flex items-center gap-2">
                                 <span id="instock-last-updated" class="text-xs text-textMuted"></span>
+                                <div class="relative">
+                                    <input type="text" id="instock-add-input" placeholder="代碼" maxlength="15"
+                                        oninput="this.value = this.value.toUpperCase()"
+                                        onkeypress="if(event.key==='Enter') INStockTab.addStock(this.value)"
+                                        class="w-24 bg-background/50 border border-white/10 rounded-lg pl-2 pr-7 py-1 text-xs focus:outline-none focus:border-primary transition-colors text-white placeholder-textMuted/50">
+                                    <button onclick="INStockTab.addStock(document.getElementById('instock-add-input').value)"
+                                        class="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 text-textMuted hover:text-primary transition-colors">
+                                        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                                    </button>
+                                </div>
                                 <button onclick="INStockTab.showPicker()" title="自選標的"
                                     class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition">
                                     <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
