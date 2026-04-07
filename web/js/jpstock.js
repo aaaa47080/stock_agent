@@ -14,40 +14,46 @@ const JPStockTab = {
     // ── 可選標的完整清單（分組）─────────────────────────────────
     AVAILABLE_SYMBOLS: [
         // 汽車
-        { symbol: '7203.T', name: '豐田汽車 Toyota',              group: '汽車' },
-        { symbol: '7267.T', name: '本田 Honda',                   group: '汽車' },
-        { symbol: '7201.T', name: '日產 Nissan',                  group: '汽車' },
-        { symbol: '7269.T', name: '鈴木 Suzuki',                  group: '汽車' },
-        { symbol: '7270.T', name: '速霸陸 Subaru',                group: '汽車' },
+        { symbol: '7203.T', name: '豐田汽車 Toyota',              name_zh: '豐田汽車', name_en: 'Toyota',                  group: '汽車' },
+        { symbol: '7267.T', name: '本田 Honda',                   name_zh: '本田',     name_en: 'Honda',                   group: '汽車' },
+        { symbol: '7201.T', name: '日產 Nissan',                  name_zh: '日產',     name_en: 'Nissan',                  group: '汽車' },
+        { symbol: '7269.T', name: '鈴木 Suzuki',                  name_zh: '鈴木',     name_en: 'Suzuki',                  group: '汽車' },
+        { symbol: '7270.T', name: '速霸陸 Subaru',                name_zh: '速霸陸',   name_en: 'Subaru',                  group: '汽車' },
         // 科技 / 電子
-        { symbol: '6758.T', name: '索尼 Sony',                    group: '科技/電子' },
-        { symbol: '6861.T', name: '基恩士 Keyence',               group: '科技/電子' },
-        { symbol: '6501.T', name: '日立 Hitachi',                 group: '科技/電子' },
-        { symbol: '6752.T', name: '松下 Panasonic',               group: '科技/電子' },
-        { symbol: '6702.T', name: '富士通 Fujitsu',               group: '科技/電子' },
-        { symbol: '6723.T', name: '瑞薩電子 Renesas',             group: '科技/電子' },
+        { symbol: '6758.T', name: '索尼 Sony',                    name_zh: '索尼',     name_en: 'Sony',                    group: '科技/電子' },
+        { symbol: '6861.T', name: '基恩士 Keyence',               name_zh: '基恩士',   name_en: 'Keyence',                 group: '科技/電子' },
+        { symbol: '6501.T', name: '日立 Hitachi',                 name_zh: '日立',     name_en: 'Hitachi',                 group: '科技/電子' },
+        { symbol: '6752.T', name: '松下 Panasonic',               name_zh: '松下',     name_en: 'Panasonic',               group: '科技/電子' },
+        { symbol: '6702.T', name: '富士通 Fujitsu',               name_zh: '富士通',   name_en: 'Fujitsu',                 group: '科技/電子' },
+        { symbol: '6723.T', name: '瑞薩電子 Renesas',             name_zh: '瑞薩電子', name_en: 'Renesas',                 group: '科技/電子' },
         // 半導體 / 設備
-        { symbol: '8035.T', name: '東京威力科創 TEL',             group: '半導體/設備' },
-        { symbol: '4063.T', name: '信越化學 Shin-Etsu',           group: '半導體/設備' },
+        { symbol: '8035.T', name: '東京威力科創 TEL',             name_zh: '東京威力科創', name_en: 'TEL',                 group: '半導體/設備' },
+        { symbol: '4063.T', name: '信越化學 Shin-Etsu',           name_zh: '信越化學', name_en: 'Shin-Etsu',               group: '半導體/設備' },
         // 金融
-        { symbol: '8306.T', name: '三菱UFJ銀行 MUFG',            group: '金融' },
-        { symbol: '8316.T', name: '三井住友 SMFG',               group: '金融' },
-        { symbol: '8411.T', name: '瑞穗銀行 Mizuho',             group: '金融' },
-        { symbol: '8604.T', name: '野村控股 Nomura',              group: '金融' },
+        { symbol: '8306.T', name: '三菱UFJ銀行 MUFG',            name_zh: '三菱UFJ銀行', name_en: 'MUFG',                 group: '金融' },
+        { symbol: '8316.T', name: '三井住友 SMFG',               name_zh: '三井住友', name_en: 'SMFG',                    group: '金融' },
+        { symbol: '8411.T', name: '瑞穗銀行 Mizuho',             name_zh: '瑞穗銀行', name_en: 'Mizuho',                  group: '金融' },
+        { symbol: '8604.T', name: '野村控股 Nomura',              name_zh: '野村控股', name_en: 'Nomura',                  group: '金融' },
         // 零售 / 消費
-        { symbol: '9983.T', name: '迅銷 Fast Retailing (Uniqlo)', group: '零售/消費' },
-        { symbol: '2914.T', name: '日本菸草 JT',                  group: '零售/消費' },
-        { symbol: '2802.T', name: '味之素 Ajinomoto',             group: '零售/消費' },
-        { symbol: '2503.T', name: '麒麟 Kirin',                   group: '零售/消費' },
+        { symbol: '9983.T', name: '迅銷 Fast Retailing (Uniqlo)', name_zh: '迅銷',     name_en: 'Fast Retailing (Uniqlo)', group: '零售/消費' },
+        { symbol: '2914.T', name: '日本菸草 JT',                  name_zh: '日本菸草', name_en: 'JT',                      group: '零售/消費' },
+        { symbol: '2802.T', name: '味之素 Ajinomoto',             name_zh: '味之素',   name_en: 'Ajinomoto',               group: '零售/消費' },
+        { symbol: '2503.T', name: '麒麟 Kirin',                   name_zh: '麒麟',     name_en: 'Kirin',                   group: '零售/消費' },
         // 電信
-        { symbol: '9432.T', name: 'NTT',                          group: '電信' },
-        { symbol: '9433.T', name: 'KDDI',                         group: '電信' },
-        { symbol: '9434.T', name: '軟銀 SoftBank',                group: '電信' },
+        { symbol: '9432.T', name: 'NTT',                          name_zh: 'NTT',      name_en: 'NTT',                     group: '電信' },
+        { symbol: '9433.T', name: 'KDDI',                         name_zh: 'KDDI',     name_en: 'KDDI',                    group: '電信' },
+        { symbol: '9434.T', name: '軟銀 SoftBank',                name_zh: '軟銀',     name_en: 'SoftBank',                group: '電信' },
         // 醫療 / 製藥
-        { symbol: '4502.T', name: '武田藥品 Takeda',              group: '醫療/製藥' },
+        { symbol: '4502.T', name: '武田藥品 Takeda',              name_zh: '武田藥品', name_en: 'Takeda',                  group: '醫療/製藥' },
         // ETF
-        { symbol: '1306.T', name: 'TOPIX ETF (野村)',             group: 'ETF' },
+        { symbol: '1306.T', name: 'TOPIX ETF (野村)',             name_zh: 'TOPIX ETF (野村)', name_en: 'TOPIX ETF (Nomura)', group: 'ETF' },
     ],
+    getStockName(item) {
+        const lang = window.I18n?.getLanguage?.() || 'zh-TW';
+        if (lang === 'en') return item.name_en || item.name || '';
+        return item.name_zh || item.name || '';
+    },
+
     STORAGE_KEY: 'jpstock_selected_symbols',
     DEFAULT_SELECTED: [
         '7203.T', '6758.T', '8306.T', '9983.T',
@@ -89,7 +95,7 @@ const JPStockTab = {
                             ${syms.map(s => `
                                 <label class="flex items-center justify-between bg-surface border ${selected.has(s.symbol) ? 'border-primary/40 bg-primary/5' : 'border-white/5'} rounded-xl px-4 py-3 cursor-pointer hover:border-primary/30 transition">
                                     <div>
-                                        <span class="text-sm font-bold text-secondary">${escapeHtml(s.name)}</span>
+                                        <span class="text-sm font-bold text-secondary">${escapeHtml(window.I18n?.getLanguage?.() === 'en' ? (s.name_en || s.name) : (s.name_zh || s.name))}</span>
                                         <span class="text-xs text-textMuted ml-2">${s.symbol}</span>
                                     </div>
                                     <input type="checkbox" value="${s.symbol}" ${selected.has(s.symbol) ? 'checked' : ''}
@@ -124,6 +130,9 @@ const JPStockTab = {
 
     // ── Init ──────────────────────────────────────────────────
     init() {
+        window.addEventListener('languageChanged', () => {
+            if (this.activeSubTab === 'market') this.renderMarket();
+        });
         if (window.MarketStatus) {
             window.MarketStatus.startMarketAutoRefresh(
                 'jpstock',
@@ -191,7 +200,7 @@ const JPStockTab = {
                         <div class="flex-1 min-w-0">
                             <div class="flex items-start justify-between gap-2">
                                 <div class="min-w-0">
-                                    <div class="font-bold text-sm text-secondary leading-tight">${escapeHtml(item.name)}</div>
+                                    <div class="font-bold text-sm text-secondary leading-tight">${escapeHtml(this.getStockName(item))}</div>
                                     <div class="text-[9px] text-textMuted font-bold tracking-wider uppercase opacity-60">${symbol} · ${item.currency || 'JPY'}</div>
                                 </div>
                                 <div class="text-right flex-shrink-0">
@@ -351,6 +360,50 @@ const JPStockTab = {
             this.chartInstance = null;
             this.chartSeries = null;
         }
+    },
+
+    addStock: async function(symbol) {
+        if (!symbol) return;
+        const sym = symbol.toUpperCase().trim();
+        if (!sym) return;
+
+        const active = this.getActiveSymbols();
+        if (active.includes(sym)) {
+            if (window.showToast) window.showToast(`${sym} 已在自選清單`, 'info');
+            const input = document.getElementById('jpstock-add-input');
+            if (input) input.value = '';
+            return;
+        }
+
+        const input = document.getElementById('jpstock-add-input');
+        const btn = input ? input.nextElementSibling : null;
+        let originalIcon = '';
+        if (btn) { originalIcon = btn.innerHTML; btn.innerHTML = '<div class="w-4 h-4 border-2 border-primary/50 border-t-primary rounded-full animate-spin"></div>'; btn.disabled = true; }
+
+        try {
+            const data = await AppAPI.get(`/api/jpstock/market?symbols=${encodeURIComponent(sym)}`);
+            if (data.stocks && data.stocks.length > 0) {
+                active.unshift(sym);
+                this._saveActiveSymbols(active);
+                this.renderMarket();
+                if (window.showToast) window.showToast(`已加入 ${sym}`, 'success');
+            } else {
+                if (window.showToast) window.showToast(`找不到 ${sym}，請確認代碼`, 'error');
+            }
+        } catch(e) {
+            if (window.showToast) window.showToast('查詢失敗：' + e.message, 'error');
+        } finally {
+            if (btn) { btn.innerHTML = originalIcon; btn.disabled = false; }
+            if (input) input.value = '';
+        }
+    },
+
+    removeStock: function(symbol, event) {
+        if (event) event.stopPropagation();
+        const active = this.getActiveSymbols().filter(s => s !== symbol);
+        if (active.length === 0) { if (window.showToast) window.showToast('至少保留一個標的', 'error'); return; }
+        this._saveActiveSymbols(active);
+        this.renderMarket();
     },
 };
 

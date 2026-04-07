@@ -13,41 +13,46 @@ const KRStockTab = {
 
     AVAILABLE_SYMBOLS: [
         // 科技 / 半導體
-        { symbol: '005930.KS', name: '三星電子 Samsung',             group: '科技/半導體' },
-        { symbol: '000660.KS', name: 'SK 海力士 SK Hynix',           group: '科技/半導體' },
-        { symbol: '066570.KS', name: 'LG電子 LG Electronics',        group: '科技/半導體' },
-        { symbol: '034730.KS', name: 'SK 控股 SK Holdings',          group: '科技/半導體' },
+        { symbol: '005930.KS', name: '三星電子 Samsung',             name_zh: '三星電子',   name_en: 'Samsung',           group: '科技/半導體' },
+        { symbol: '000660.KS', name: 'SK 海力士 SK Hynix',           name_zh: 'SK 海力士',  name_en: 'SK Hynix',          group: '科技/半導體' },
+        { symbol: '066570.KS', name: 'LG電子 LG Electronics',        name_zh: 'LG電子',     name_en: 'LG Electronics',    group: '科技/半導體' },
+        { symbol: '034730.KS', name: 'SK 控股 SK Holdings',          name_zh: 'SK 控股',    name_en: 'SK Holdings',       group: '科技/半導體' },
         // 汽車
-        { symbol: '005380.KS', name: '現代汽車 Hyundai Motor',       group: '汽車' },
-        { symbol: '000270.KS', name: '起亞 Kia',                     group: '汽車' },
-        { symbol: '012330.KS', name: '現代摩比斯 Mobis',             group: '汽車' },
+        { symbol: '005380.KS', name: '現代汽車 Hyundai Motor',       name_zh: '現代汽車',   name_en: 'Hyundai Motor',     group: '汽車' },
+        { symbol: '000270.KS', name: '起亞 Kia',                     name_zh: '起亞',       name_en: 'Kia',               group: '汽車' },
+        { symbol: '012330.KS', name: '現代摩比斯 Mobis',             name_zh: '現代摩比斯', name_en: 'Mobis',             group: '汽車' },
         // 化學 / 材料
-        { symbol: '051910.KS', name: 'LG 化學 LG Chem',              group: '化學/材料' },
-        { symbol: '096770.KS', name: 'SK 創新 SK Innovation',        group: '化學/材料' },
-        { symbol: '003670.KS', name: '浦項鋼鐵 POSCO',               group: '化學/材料' },
+        { symbol: '051910.KS', name: 'LG 化學 LG Chem',              name_zh: 'LG 化學',    name_en: 'LG Chem',           group: '化學/材料' },
+        { symbol: '096770.KS', name: 'SK 創新 SK Innovation',        name_zh: 'SK 創新',    name_en: 'SK Innovation',     group: '化學/材料' },
+        { symbol: '003670.KS', name: '浦項鋼鐵 POSCO',               name_zh: '浦項鋼鐵',   name_en: 'POSCO',             group: '化學/材料' },
         // 金融
-        { symbol: '105560.KS', name: 'KB 金融 KB Financial',         group: '金融' },
-        { symbol: '055550.KS', name: '新韓金融 Shinhan',             group: '金融' },
-        { symbol: '086790.KS', name: '韓亞金融 Hana Financial',      group: '金融' },
+        { symbol: '105560.KS', name: 'KB 金融 KB Financial',         name_zh: 'KB 金融',    name_en: 'KB Financial',      group: '金融' },
+        { symbol: '055550.KS', name: '新韓金融 Shinhan',             name_zh: '新韓金融',   name_en: 'Shinhan',           group: '金融' },
+        { symbol: '086790.KS', name: '韓亞金融 Hana Financial',      name_zh: '韓亞金融',   name_en: 'Hana Financial',    group: '金融' },
         // 生技 / 醫療
-        { symbol: '207940.KS', name: '三星生物 Samsung Biologics',   group: '生技/醫療' },
-        { symbol: '068270.KS', name: 'Celltrion',                    group: '生技/醫療' },
+        { symbol: '207940.KS', name: '三星生物 Samsung Biologics',   name_zh: '三星生物',   name_en: 'Samsung Biologics', group: '生技/醫療' },
+        { symbol: '068270.KS', name: 'Celltrion',                    name_zh: 'Celltrion',  name_en: 'Celltrion',         group: '生技/醫療' },
         // 消費 / 食品
-        { symbol: '004370.KS', name: '農心 Nongshim',                group: '消費/食品' },
-        { symbol: '097950.KS', name: 'CJ 第一製糖',                  group: '消費/食品' },
+        { symbol: '004370.KS', name: '農心 Nongshim',                name_zh: '農心',       name_en: 'Nongshim',          group: '消費/食品' },
+        { symbol: '097950.KS', name: 'CJ 第一製糖',                  name_zh: 'CJ 第一製糖', name_en: 'CJ CheilJedang',   group: '消費/食品' },
         // 電信
-        { symbol: '017670.KS', name: 'SK 電信 SK Telecom',           group: '電信' },
-        { symbol: '030200.KS', name: 'KT',                           group: '電信' },
+        { symbol: '017670.KS', name: 'SK 電信 SK Telecom',           name_zh: 'SK 電信',    name_en: 'SK Telecom',        group: '電信' },
+        { symbol: '030200.KS', name: 'KT',                           name_zh: 'KT',         name_en: 'KT',                group: '電信' },
         // KOSDAQ
-        { symbol: '035420.KQ', name: 'Naver',                        group: 'KOSDAQ' },
-        { symbol: '035720.KQ', name: 'Kakao',                        group: 'KOSDAQ' },
-        { symbol: '247540.KQ', name: 'EcoPro BM',                    group: 'KOSDAQ' },
-        { symbol: '086520.KQ', name: 'EcoPro',                       group: 'KOSDAQ' },
-        { symbol: '196170.KQ', name: 'Alteogen',                     group: 'KOSDAQ' },
+        { symbol: '035420.KQ', name: 'Naver',                        name_zh: 'Naver',      name_en: 'Naver',             group: 'KOSDAQ' },
+        { symbol: '035720.KQ', name: 'Kakao',                        name_zh: 'Kakao',      name_en: 'Kakao',             group: 'KOSDAQ' },
+        { symbol: '247540.KQ', name: 'EcoPro BM',                    name_zh: 'EcoPro BM',  name_en: 'EcoPro BM',         group: 'KOSDAQ' },
+        { symbol: '086520.KQ', name: 'EcoPro',                       name_zh: 'EcoPro',     name_en: 'EcoPro',            group: 'KOSDAQ' },
+        { symbol: '196170.KQ', name: 'Alteogen',                     name_zh: 'Alteogen',   name_en: 'Alteogen',          group: 'KOSDAQ' },
         // ETF
-        { symbol: '069500.KS', name: 'KODEX 200 ETF',                group: 'ETF' },
-        { symbol: '133690.KS', name: 'TIGER Nasdaq100 ETF',          group: 'ETF' },
+        { symbol: '069500.KS', name: 'KODEX 200 ETF',                name_zh: 'KODEX 200 ETF',     name_en: 'KODEX 200 ETF',     group: 'ETF' },
+        { symbol: '133690.KS', name: 'TIGER Nasdaq100 ETF',          name_zh: 'TIGER Nasdaq100 ETF', name_en: 'TIGER Nasdaq100 ETF', group: 'ETF' },
     ],
+    getStockName(item) {
+        const lang = window.I18n?.getLanguage?.() || 'zh-TW';
+        if (lang === 'en') return item.name_en || item.name || '';
+        return item.name_zh || item.name || '';
+    },
     STORAGE_KEY: 'krstock_selected_symbols',
     DEFAULT_SELECTED: [
         '005930.KS', '000660.KS', '005380.KS', '035420.KQ',
@@ -88,7 +93,7 @@ const KRStockTab = {
                             ${syms.map(s => `
                                 <label class="flex items-center justify-between bg-surface border ${selected.has(s.symbol) ? 'border-primary/40 bg-primary/5' : 'border-white/5'} rounded-xl px-4 py-3 cursor-pointer hover:border-primary/30 transition">
                                     <div>
-                                        <span class="text-sm font-bold text-secondary">${escapeHtml(s.name)}</span>
+                                        <span class="text-sm font-bold text-secondary">${escapeHtml(window.I18n?.getLanguage?.() === 'en' ? (s.name_en || s.name) : (s.name_zh || s.name))}</span>
                                         <span class="text-xs text-textMuted ml-2">${s.symbol}</span>
                                     </div>
                                     <input type="checkbox" value="${s.symbol}" ${selected.has(s.symbol) ? 'checked' : ''}
@@ -122,6 +127,9 @@ const KRStockTab = {
     },
 
     init() {
+        window.addEventListener('languageChanged', () => {
+            if (this.activeSubTab === 'market') this.renderMarket();
+        });
         if (window.MarketStatus) {
             window.MarketStatus.startMarketAutoRefresh(
                 'krstock',
@@ -187,7 +195,7 @@ const KRStockTab = {
                         <div class="flex-1 min-w-0">
                             <div class="flex items-start justify-between gap-2">
                                 <div class="min-w-0">
-                                    <div class="font-bold text-sm text-secondary leading-tight">${escapeHtml(item.name)}</div>
+                                    <div class="font-bold text-sm text-secondary leading-tight">${escapeHtml(this.getStockName(item))}</div>
                                     <div class="text-[9px] text-textMuted font-bold tracking-wider uppercase opacity-60">${symbol} · ${item.currency || 'KRW'}</div>
                                 </div>
                                 <div class="text-right flex-shrink-0">
@@ -345,6 +353,50 @@ const KRStockTab = {
             this.chartInstance = null;
             this.chartSeries = null;
         }
+    },
+
+    addStock: async function(symbol) {
+        if (!symbol) return;
+        const sym = symbol.toUpperCase().trim();
+        if (!sym) return;
+
+        const active = this.getActiveSymbols();
+        if (active.includes(sym)) {
+            if (window.showToast) window.showToast(`${sym} 已在自選清單`, 'info');
+            const input = document.getElementById('krstock-add-input');
+            if (input) input.value = '';
+            return;
+        }
+
+        const input = document.getElementById('krstock-add-input');
+        const btn = input ? input.nextElementSibling : null;
+        let originalIcon = '';
+        if (btn) { originalIcon = btn.innerHTML; btn.innerHTML = '<div class="w-4 h-4 border-2 border-primary/50 border-t-primary rounded-full animate-spin"></div>'; btn.disabled = true; }
+
+        try {
+            const data = await AppAPI.get(`/api/krstock/market?symbols=${encodeURIComponent(sym)}`);
+            if (data.stocks && data.stocks.length > 0) {
+                active.unshift(sym);
+                this._saveActiveSymbols(active);
+                this.renderMarket();
+                if (window.showToast) window.showToast(`已加入 ${sym}`, 'success');
+            } else {
+                if (window.showToast) window.showToast(`找不到 ${sym}，請確認代碼`, 'error');
+            }
+        } catch(e) {
+            if (window.showToast) window.showToast('查詢失敗：' + e.message, 'error');
+        } finally {
+            if (btn) { btn.innerHTML = originalIcon; btn.disabled = false; }
+            if (input) input.value = '';
+        }
+    },
+
+    removeStock: function(symbol, event) {
+        if (event) event.stopPropagation();
+        const active = this.getActiveSymbols().filter(s => s !== symbol);
+        if (active.length === 0) { if (window.showToast) window.showToast('至少保留一個標的', 'error'); return; }
+        this._saveActiveSymbols(active);
+        this.renderMarket();
     },
 };
 

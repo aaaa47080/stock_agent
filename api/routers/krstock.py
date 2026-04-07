@@ -42,42 +42,42 @@ _YF_HEADERS = {
 }
 
 # ── Curated Korea stock name table ─────────────────────────────────────────────
-_KR_STOCK_NAMES: dict[str, str] = {
+_KR_STOCK_NAMES: dict[str, dict] = {
     # 科技 / 半導體 (KOSPI)
-    "005930.KS": "三星電子 Samsung",
-    "000660.KS": "SK 海力士 SK Hynix",
-    "066570.KS": "LG電子 LG Electronics",
-    "034730.KS": "SK 控股 SK Holdings",
+    "005930.KS": {"zh": "三星電子", "en": "Samsung"},
+    "000660.KS": {"zh": "SK 海力士", "en": "SK Hynix"},
+    "066570.KS": {"zh": "LG電子", "en": "LG Electronics"},
+    "034730.KS": {"zh": "SK 控股", "en": "SK Holdings"},
     # 汽車
-    "005380.KS": "現代汽車 Hyundai Motor",
-    "000270.KS": "起亞 Kia",
-    "012330.KS": "現代摩比斯 Mobis",
+    "005380.KS": {"zh": "現代汽車", "en": "Hyundai Motor"},
+    "000270.KS": {"zh": "起亞", "en": "Kia"},
+    "012330.KS": {"zh": "現代摩比斯", "en": "Mobis"},
     # 化學 / 材料
-    "051910.KS": "LG 化學 LG Chem",
-    "096770.KS": "SK 創新 SK Innovation",
-    "003670.KS": "浦項鋼鐵 POSCO",
+    "051910.KS": {"zh": "LG 化學", "en": "LG Chem"},
+    "096770.KS": {"zh": "SK 創新", "en": "SK Innovation"},
+    "003670.KS": {"zh": "浦項鋼鐵", "en": "POSCO"},
     # 金融 / 保險
-    "105560.KS": "KB 金融 KB Financial",
-    "055550.KS": "新韓金融 Shinhan",
-    "086790.KS": "韓國銀行 Hana Financial",
+    "105560.KS": {"zh": "KB 金融", "en": "KB Financial"},
+    "055550.KS": {"zh": "新韓金融", "en": "Shinhan"},
+    "086790.KS": {"zh": "韓國銀行", "en": "Hana Financial"},
     # 生技 / 醫療
-    "207940.KS": "三星生物 Samsung Biologics",
-    "068270.KS": "Celltrion",
+    "207940.KS": {"zh": "三星生物", "en": "Samsung Biologics"},
+    "068270.KS": {"zh": "Celltrion", "en": "Celltrion"},
     # 消費 / 零售
-    "004370.KS": "農心 Nongshim",
-    "097950.KS": "CJ 第一製糖 CJ CheilJedang",
+    "004370.KS": {"zh": "農心", "en": "Nongshim"},
+    "097950.KS": {"zh": "CJ 第一製糖", "en": "CJ CheilJedang"},
     # 電信
-    "017670.KS": "SK 電信 SK Telecom",
-    "030200.KS": "KT",
+    "017670.KS": {"zh": "SK 電信", "en": "SK Telecom"},
+    "030200.KS": {"zh": "KT", "en": "KT"},
     # KOSDAQ
-    "035420.KQ": "Naver",
-    "035720.KQ": "Kakao",
-    "247540.KQ": "EcoPro BM",
-    "086520.KQ": "EcoPro",
-    "196170.KQ": "Alteogen",
+    "035420.KQ": {"zh": "Naver", "en": "Naver"},
+    "035720.KQ": {"zh": "Kakao", "en": "Kakao"},
+    "247540.KQ": {"zh": "EcoPro BM", "en": "EcoPro BM"},
+    "086520.KQ": {"zh": "EcoPro", "en": "EcoPro"},
+    "196170.KQ": {"zh": "Alteogen", "en": "Alteogen"},
     # ETF
-    "069500.KS": "KODEX 200 ETF",
-    "133690.KS": "TIGER 나스닥100 ETF",
+    "069500.KS": {"zh": "KODEX 200 ETF", "en": "KODEX 200 ETF"},
+    "133690.KS": {"zh": "TIGER 나스닥100 ETF", "en": "TIGER 나스닥100 ETF"},
 }
 
 DEFAULT_KR_SYMBOLS = [
@@ -106,10 +106,19 @@ async def _fetch_quote_v8(client: httpx.AsyncClient, symbol: str) -> dict | None
         prev  = float(meta.get("chartPreviousClose") or meta.get("previousClose") or price)
         change = round(price - prev, 0)
         change_pct = round((change / prev) * 100, 2) if prev else 0.0
-        display_name = _KR_STOCK_NAMES.get(symbol) or meta.get("shortName") or symbol
+        names = _KR_STOCK_NAMES.get(symbol)
+        if names:
+            name_zh = names["zh"]
+            name_en = names["en"]
+        else:
+            fallback = meta.get("shortName") or symbol
+            name_zh = fallback
+            name_en = fallback
         return {
             "symbol": symbol,
-            "name": display_name,
+            "name": name_zh,       # backward compat
+            "name_zh": name_zh,
+            "name_en": name_en,
             "price": price,
             "change": change,
             "changePercent": change_pct,
@@ -331,3 +340,36 @@ async def get_kr_klines(symbol: str, interval: str = "1d", limit: int = 200):
     result_data = {"symbol": sym, "interval": interval, "data": klines}
     _set_cache(cache_key, result_data, ttl=300)
     return result_data
+
+
+@router.get("/search")
+async def search_kr_stocks(q: str):
+    """Search Korean stocks via Yahoo Finance search API."""
+    if not q or len(q.strip()) < 1:
+        return {"results": []}
+    try:
+        url = "https://query1.finance.yahoo.com/v1/finance/search"
+        params = {
+            "q": q,
+            "lang": "en-US",
+            "region": "US",
+            "quotesCount": 10,
+            "newsCount": 0,
+            "enableFuzzyQuery": False,
+            "quotesQueryId": "tss_match_phrase_query",
+        }
+        async with httpx.AsyncClient(timeout=8, headers=_YF_HEADERS) as client:
+            resp = await client.get(url, params=params)
+            resp.raise_for_status()
+            data = resp.json()
+        quotes = data.get("quotes", [])
+        results = [
+            {"symbol": q["symbol"], "name": q.get("shortname") or q.get("longname") or q["symbol"]}
+            for q in quotes
+            if (q.get("symbol", "").endswith(".KS") or q.get("symbol", "").endswith(".KQ"))
+            and q.get("quoteType") in ("EQUITY", "ETF", "MUTUALFUND")
+        ]
+        return {"results": results}
+    except Exception as e:
+        logger.warning(f"[krstock] search failed: {e}")
+        return {"results": []}

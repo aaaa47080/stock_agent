@@ -181,41 +181,29 @@
 
                 <!-- Messages Area -->
                 <div id="chat-messages" data-shell-scroll data-shell-scroll-extra="1rem"
-                    class="flex-1 overflow-y-auto custom-scrollbar px-4 md:px-8 py-6 space-y-6"
+                    class="flex-1 overflow-y-auto custom-scrollbar py-6"
+                    style="padding-left: max(1rem, env(safe-area-inset-left)); padding-right: max(1rem, env(safe-area-inset-right));"
                     aria-live="polite" aria-atomic="false">
-                    <!-- Welcome -->
-                    <div class="bot-message opacity-0 animate-fade-in-up"
+                    <!-- Welcome — centered, within the same max-width column -->
+                    <div class="opacity-0 animate-fade-in-up max-w-3xl mx-auto px-2"
                         style="animation-delay: 0.1s; animation-fill-mode: forwards;">
-                        <div class="flex flex-col items-center justify-center mb-8">
+                        <div class="flex flex-col items-center justify-center pt-8 pb-6">
                             <h1 class="font-serif text-3xl md:text-4xl leading-tight text-center">
-                                <span class="text-secondary" data-i18n="chat.welcomeTo">Welcome to</span><br>
-                                <span
-                                    class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">CryptoMind</span>
+                                <span class="text-secondary" data-i18n="chat.welcomeTo">Welcome to</span>
+                                <span class="text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent ml-2">CryptoMind</span>
                             </h1>
-                            <p class="text-textMuted mt-2">Good <span id="greeting-time">day</span>.</p>
+                            <p class="text-textMuted/60 text-sm mt-2">Good <span id="greeting-time">day</span>.</p>
                         </div>
-                        <p class="text-textMuted text-lg font-light leading-relaxed text-center"
-                            data-i18n="chat.subtitle">
-                            AI-powered crypto analysis and trading insights. Monitor markets and make informed
-                            decisions.
-                        </p>
-
-                        <div class="flex flex-wrap gap-3 mt-8 justify-center">
+                        <div class="flex flex-wrap gap-2 justify-center pb-4">
                             <button onclick="quickAsk('Analyze BTC trend')"
-                                class="px-5 py-2.5 rounded-full bg-surface hover:bg-surfaceHighlight border border-white/5 text-sm text-textMuted hover:text-primary transition shadow-sm"
-                                data-i18n="chat.btnBtcTrend">
-                                Bitcoin Trend
-                            </button>
+                                class="px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/8 text-sm text-textMuted hover:text-secondary transition"
+                                data-i18n="chat.btnBtcTrend">Bitcoin Trend</button>
                             <button onclick="quickAsk('ETH Funding Rates')"
-                                class="px-5 py-2.5 rounded-full bg-surface hover:bg-surfaceHighlight border border-white/5 text-sm text-textMuted hover:text-primary transition shadow-sm"
-                                data-i18n="chat.btnEthRates">
-                                ETH Rates
-                            </button>
+                                class="px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/8 text-sm text-textMuted hover:text-secondary transition"
+                                data-i18n="chat.btnEthRates">ETH Rates</button>
                             <button onclick="quickAsk('Market Sentiment')"
-                                class="px-5 py-2.5 rounded-full bg-surface hover:bg-surfaceHighlight border border-white/5 text-sm text-textMuted hover:text-primary transition shadow-sm"
-                                data-i18n="chat.btnSentiment">
-                                Global Sentiment
-                            </button>
+                                class="px-4 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-white/8 text-sm text-textMuted hover:text-secondary transition"
+                                data-i18n="chat.btnSentiment">Global Sentiment</button>
                         </div>
                     </div>
                 </div>
@@ -247,48 +235,51 @@
 
                 <!-- Input Area -->
                 <div data-shell-fixed-input
-                    class="fixed bottom-0 left-0 md:left-72 right-0 z-40 bg-background/80 backdrop-blur-xl border-t border-white/5 px-4 md:px-8 py-4">
-                    <div class="relative w-full max-w-4xl mx-auto">
-                        <!-- Hidden Options -->
+                    class="fixed bottom-0 left-0 md:left-72 right-0 z-40 bg-background/90 backdrop-blur-xl border-t border-white/5 px-3 md:px-6 pt-2 pb-3">
+                    <div class="relative w-full max-w-3xl mx-auto">
+                        <!-- Options panel (hidden by default) -->
                         <div id="analysis-options-panel"
-                            class="hidden absolute bottom-full left-0 right-0 mb-4 p-4 bg-surface rounded-3xl border border-white/5 shadow-xl animate-fade-in-up z-10">
-                            <div class="flex flex-wrap gap-4 justify-center">
-                                <label class="flex items-center gap-2 cursor-pointer select-none">
-                                    <input type="checkbox" class="analysis-checkbox accent-primary w-4 h-4 rounded-full"
-                                        value="Technical Analysis" checked>
-                                    <span class="text-sm text-secondary" data-i18n="chat.technical">Technical</span>
-                                </label>
-                                <label class="flex items-center gap-2 cursor-pointer select-none">
-                                    <input type="checkbox" class="analysis-checkbox accent-primary w-4 h-4 rounded-full"
-                                        value="News Analysis" checked>
-                                    <span class="text-sm text-secondary" data-i18n="chat.news">News</span>
-                                </label>
+                            class="hidden absolute bottom-full left-0 right-0 mb-2 p-3 bg-surface rounded-2xl border border-white/8 shadow-xl animate-fade-in-up z-10">
+                            <div class="flex flex-wrap gap-3 items-center justify-between">
+                                <div class="flex gap-3">
+                                    <label class="flex items-center gap-1.5 cursor-pointer select-none">
+                                        <input type="checkbox" class="analysis-checkbox accent-primary w-3.5 h-3.5"
+                                            value="Technical Analysis" checked>
+                                        <span class="text-xs text-textMuted" data-i18n="chat.technical">Technical</span>
+                                    </label>
+                                    <label class="flex items-center gap-1.5 cursor-pointer select-none">
+                                        <input type="checkbox" class="analysis-checkbox accent-primary w-3.5 h-3.5"
+                                            value="News Analysis" checked>
+                                        <span class="text-xs text-textMuted" data-i18n="chat.news">News</span>
+                                    </label>
+                                </div>
+                                <label for="analysis-mode-select" class="sr-only">分析模式</label>
+                                <select id="analysis-mode-select"
+                                    class="h-7 px-2 rounded-lg bg-white/5 border border-white/10 text-xs text-textMuted focus:outline-none">
+                                    <option value="quick">Quick</option>
+                                    <option value="verified">Verified</option>
+                                    <option value="research">Research</option>
+                                </select>
                             </div>
                         </div>
 
-                        <!-- Input Box -->
-                        <div
-                            class="bg-surface/90 border border-white/10 rounded-[2rem] p-2 flex items-center gap-2 shadow-xl focus-within:ring-1 focus-within:ring-primary/50">
-                            <label for="analysis-mode-select" class="sr-only">分析模式</label>
-                            <select id="analysis-mode-select"
-                                class="h-10 px-3 rounded-full bg-white/5 border border-white/10 text-xs text-textMuted focus:outline-none focus:ring-1 focus:ring-primary/40">
-                                <option value="quick">Quick</option>
-                                <option value="verified">Verified</option>
-                                <option value="research">Research</option>
-                            </select>
-                            <button onclick="toggleOptions()" aria-label="顯示選項"
-                                class="w-10 h-10 rounded-full hover:bg-white/5 flex items-center justify-center text-textMuted hover:text-primary transition">
-                                <i data-lucide="plus" class="w-5 h-5"></i>
+                        <!-- Main input row -->
+                        <div class="flex items-end gap-2">
+                            <button onclick="toggleOptions()" aria-label="選項"
+                                class="w-8 h-8 mb-0.5 rounded-full hover:bg-white/8 flex items-center justify-center text-textMuted/60 hover:text-primary transition flex-shrink-0">
+                                <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
                             </button>
-                            <label for="user-input" class="sr-only">輸入訊息</label>
-                            <input type="text" id="user-input" disabled aria-label="輸入訊息"
-                                class="flex-1 bg-transparent border-none outline-none text-base text-secondary placeholder-textMuted/50 px-2 font-light relative z-10 opacity-50 cursor-not-allowed"
-                                placeholder="Send a command to AI Agent..."
-                                autocomplete="off"
-                                onkeypress="if(event.key === 'Enter') sendMessage()">
-                            <button onclick="sendMessage()" id="send-btn" disabled aria-label="發送訊息"
-                                class="w-10 h-10 rounded-full bg-gradient-to-r from-primary to-accent text-background flex items-center justify-center hover:scale-105 active:scale-95 transition shadow-lg shadow-primary/20 opacity-50 cursor-not-allowed">
-                                <i data-lucide="arrow-up" class="w-5 h-5"></i>
+                            <div class="flex-1 bg-surface/80 border border-white/10 rounded-2xl px-4 py-2.5 flex items-center gap-2 focus-within:border-primary/40 focus-within:bg-surface transition-all shadow-lg">
+                                <label for="user-input" class="sr-only">輸入訊息</label>
+                                <input type="text" id="user-input" disabled aria-label="輸入訊息"
+                                    class="flex-1 bg-transparent border-none outline-none text-sm text-secondary placeholder-textMuted/40 font-normal opacity-50 cursor-not-allowed"
+                                    placeholder="Send a command to AI Agent..."
+                                    autocomplete="off"
+                                    onkeypress="if(event.key === 'Enter') sendMessage()">
+                            </div>
+                            <button onclick="sendMessage()" id="send-btn" disabled aria-label="發送"
+                                class="w-9 h-9 mb-0.5 rounded-full bg-gradient-to-br from-primary to-accent text-white flex items-center justify-center hover:brightness-110 active:scale-95 transition shadow-lg shadow-primary/25 opacity-50 cursor-not-allowed flex-shrink-0">
+                                <i data-lucide="arrow-up" class="w-4 h-4"></i>
                             </button>
                         </div>
                     </div>
@@ -515,6 +506,16 @@
                             <h2 class="font-serif text-3xl text-secondary">港股市場</h2>
                             <div class="flex items-center gap-2">
                                 <span id="hkstock-last-updated" class="text-xs text-textMuted"></span>
+                                <div class="relative">
+                                    <input type="text" id="hkstock-add-input" placeholder="代碼" maxlength="12"
+                                        oninput="this.value = this.value.toUpperCase()"
+                                        onkeypress="if(event.key==='Enter') HKStockTab.addStock(this.value)"
+                                        class="w-24 bg-background/50 border border-white/10 rounded-lg pl-2 pr-7 py-1 text-xs focus:outline-none focus:border-primary transition-colors text-white placeholder-textMuted/50">
+                                    <button onclick="HKStockTab.addStock(document.getElementById('hkstock-add-input').value)"
+                                        class="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 text-textMuted hover:text-primary transition-colors">
+                                        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                                    </button>
+                                </div>
                                 <button onclick="HKStockTab.showPicker()" title="自選標的"
                                     class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition">
                                     <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
@@ -559,6 +560,16 @@
                             <h2 class="font-serif text-3xl text-secondary">陸股市場</h2>
                             <div class="flex items-center gap-2">
                                 <span id="astock-last-updated" class="text-xs text-textMuted"></span>
+                                <div class="relative">
+                                    <input type="text" id="astock-add-input" placeholder="代碼" maxlength="12"
+                                        oninput="this.value = this.value.toUpperCase()"
+                                        onkeypress="if(event.key==='Enter') AStockTab.addStock(this.value)"
+                                        class="w-24 bg-background/50 border border-white/10 rounded-lg pl-2 pr-7 py-1 text-xs focus:outline-none focus:border-primary transition-colors text-white placeholder-textMuted/50">
+                                    <button onclick="AStockTab.addStock(document.getElementById('astock-add-input').value)"
+                                        class="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 text-textMuted hover:text-primary transition-colors">
+                                        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                                    </button>
+                                </div>
                                 <button onclick="AStockTab.showPicker()" title="自選標的"
                                     class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition">
                                     <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
@@ -603,6 +614,16 @@
                             <h2 class="font-serif text-3xl text-secondary">日股市場</h2>
                             <div class="flex items-center gap-2">
                                 <span id="jpstock-last-updated" class="text-xs text-textMuted"></span>
+                                <div class="relative">
+                                    <input type="text" id="jpstock-add-input" placeholder="代碼" maxlength="12"
+                                        oninput="this.value = this.value.toUpperCase()"
+                                        onkeypress="if(event.key==='Enter') JPStockTab.addStock(this.value)"
+                                        class="w-24 bg-background/50 border border-white/10 rounded-lg pl-2 pr-7 py-1 text-xs focus:outline-none focus:border-primary transition-colors text-white placeholder-textMuted/50">
+                                    <button onclick="JPStockTab.addStock(document.getElementById('jpstock-add-input').value)"
+                                        class="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 text-textMuted hover:text-primary transition-colors">
+                                        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                                    </button>
+                                </div>
                                 <button onclick="JPStockTab.showPicker()" title="自選標的"
                                     class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition">
                                     <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
@@ -647,6 +668,16 @@
                             <h2 class="font-serif text-3xl text-secondary">印度股市</h2>
                             <div class="flex items-center gap-2">
                                 <span id="instock-last-updated" class="text-xs text-textMuted"></span>
+                                <div class="relative">
+                                    <input type="text" id="instock-add-input" placeholder="代碼" maxlength="15"
+                                        oninput="this.value = this.value.toUpperCase()"
+                                        onkeypress="if(event.key==='Enter') INStockTab.addStock(this.value)"
+                                        class="w-24 bg-background/50 border border-white/10 rounded-lg pl-2 pr-7 py-1 text-xs focus:outline-none focus:border-primary transition-colors text-white placeholder-textMuted/50">
+                                    <button onclick="INStockTab.addStock(document.getElementById('instock-add-input').value)"
+                                        class="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 text-textMuted hover:text-primary transition-colors">
+                                        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                                    </button>
+                                </div>
                                 <button onclick="INStockTab.showPicker()" title="自選標的"
                                     class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition">
                                     <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
@@ -691,6 +722,16 @@
                             <h2 class="font-serif text-3xl text-secondary">韓股市場</h2>
                             <div class="flex items-center gap-2">
                                 <span id="krstock-last-updated" class="text-xs text-textMuted"></span>
+                                <div class="relative">
+                                    <input type="text" id="krstock-add-input" placeholder="代碼" maxlength="12"
+                                        oninput="this.value = this.value.toUpperCase()"
+                                        onkeypress="if(event.key==='Enter') KRStockTab.addStock(this.value)"
+                                        class="w-24 bg-background/50 border border-white/10 rounded-lg pl-2 pr-7 py-1 text-xs focus:outline-none focus:border-primary transition-colors text-white placeholder-textMuted/50">
+                                    <button onclick="KRStockTab.addStock(document.getElementById('krstock-add-input').value)"
+                                        class="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 text-textMuted hover:text-primary transition-colors">
+                                        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                                    </button>
+                                </div>
                                 <button onclick="KRStockTab.showPicker()" title="自選標的"
                                     class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition">
                                     <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>

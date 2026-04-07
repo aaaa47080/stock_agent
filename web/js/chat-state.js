@@ -381,9 +381,24 @@ window.MessageComponents = MessageComponents;
 
 function appendMessage(role, content) {
     const container = document.getElementById('chat-messages');
+
+    // row wrapper
+    const row = document.createElement('div');
     const div = document.createElement('div');
-    // 使用 bot-bubble 取代原本的 bot-message 來套用背景框，bot-message 則保持透明
-    div.className = `message-bubble ${role === 'user' ? 'user-message' : 'bot-bubble prose'}`;
+
+    if (role === 'user') {
+        row.className = 'chat-row chat-row-user';
+        div.className = 'chat-bubble-user';
+        row.appendChild(div);
+    } else {
+        row.className = 'chat-row chat-row-ai';
+        const avatar = document.createElement('div');
+        avatar.className = 'chat-avatar';
+        avatar.innerHTML = '<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z"/></svg>';
+        div.className = 'chat-content-ai prose';
+        row.appendChild(avatar);
+        row.appendChild(div);
+    }
 
     if (role === 'bot') {
         // BUG FIX: 檢查 md 對象是否存在且 render 方法可用
@@ -436,7 +451,7 @@ function appendMessage(role, content) {
         div.textContent = content;
     }
 
-    container.appendChild(div);
+    container.appendChild(row);
     container.scrollTop = container.scrollHeight;
     return div;
 }

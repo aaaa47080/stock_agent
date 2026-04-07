@@ -8,6 +8,13 @@
 window.TWStockTab = {
     activeSubTab: 'market', // 'market' | 'pulse'
     lastUpdatedAt: null,
+
+    getStockName(item) {
+        const lang = window.I18n?.getLanguage?.() || 'zh-TW';
+        if (lang === 'en') return item.name_en || item.name_zh || item.Name || item.name || '';
+        return item.name_zh || item.Name || item.name || '';
+    },
+
     defaultSymbols: [
         '2330', '2317', '2454', '2308',
         '2881', '2412', '2882', '2891', '1301', '2002',
@@ -97,6 +104,9 @@ window.TWStockTab = {
     },
 
     initTwStock: function () {
+        window.addEventListener('languageChanged', () => {
+            if (this.activeSubTab === 'market') this.refreshMarketWatch();
+        });
         if (window.MarketStatus && !this._autoRefreshBound) {
             this._autoRefreshBound = true;
             window.MarketStatus.startMarketAutoRefresh(
@@ -365,7 +375,7 @@ window.TWStockTab = {
         const fragment = document.createDocumentFragment();
         items.forEach((item) => {
             const sym = escapeHtml(item.Symbol || 'N/A');
-            const name = escapeHtml(item.Name || sym);
+            const name = escapeHtml(this.getStockName(item) || sym);
             const exchange = escapeHtml(item.Exchange || _t('twstock.twExchange'));
             const price = item.Close
                 ? parseFloat(item.Close).toLocaleString(undefined, {

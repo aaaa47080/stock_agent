@@ -6,6 +6,13 @@
 window.USStockTab = {
     activeSubTab: 'market',
     lastUpdatedAt: null,
+
+    getStockName(item) {
+        const lang = window.I18n?.getLanguage?.() || 'zh-TW';
+        if (lang === 'en') return item.name_en || item.name || '';
+        return item.name_zh || item.name || '';
+    },
+
     defaultSymbols: [
         'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA',
         'META', 'NVDA', 'NFLX', 'AMD', 'INTC',
@@ -102,6 +109,9 @@ window.USStockTab = {
     // ── Init ─────────────────────────────────────────────────────────────────
 
     init: function () {
+        window.addEventListener('languageChanged', () => {
+            if (this.activeSubTab === 'market') this.refreshMarketWatch();
+        });
         if (window.MarketStatus && !this._autoRefreshBound) {
             this._autoRefreshBound = true;
             window.MarketStatus.startMarketAutoRefresh(
@@ -346,7 +356,7 @@ window.USStockTab = {
         const frag = document.createDocumentFragment();
         items.forEach((item) => {
             const sym = esc(item.symbol);
-            const name = esc(item.name || sym);
+            const name = esc(this.getStockName(item) || sym);
             const price = item.price != null ? `$${item.price.toFixed(2)}` : '-';
             const chg = item.changePercent != null ? parseFloat(item.changePercent) : 0;
             const isPos = chg > 0;

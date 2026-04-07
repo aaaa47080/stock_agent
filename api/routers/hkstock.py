@@ -43,42 +43,42 @@ _YF_HEADERS = {
 }
 
 # ── Curated HK stock name table ────────────────────────────────────────────────
-_HK_STOCK_NAMES: dict[str, str] = {
+_HK_STOCK_NAMES: dict[str, dict] = {
     # 科技 / 互聯網
-    "0700.HK": "騰訊 Tencent",
-    "9988.HK": "阿里巴巴 Alibaba",
-    "3690.HK": "美團 Meituan",
-    "9618.HK": "京東 JD.com",
-    "0992.HK": "聯想 Lenovo",
-    "0241.HK": "阿里健康",
+    "0700.HK": {"zh": "騰訊", "en": "Tencent"},
+    "9988.HK": {"zh": "阿里巴巴", "en": "Alibaba"},
+    "3690.HK": {"zh": "美團", "en": "Meituan"},
+    "9618.HK": {"zh": "京東", "en": "JD.com"},
+    "0992.HK": {"zh": "聯想", "en": "Lenovo"},
+    "0241.HK": {"zh": "阿里健康", "en": "Alibaba Health"},
     # 金融
-    "0005.HK": "匯豐 HSBC",
-    "0939.HK": "建設銀行",
-    "1398.HK": "工商銀行",
-    "3988.HK": "中國銀行",
-    "0011.HK": "恒生銀行",
-    "2318.HK": "中國平安",
+    "0005.HK": {"zh": "匯豐", "en": "HSBC"},
+    "0939.HK": {"zh": "建設銀行", "en": "CCB"},
+    "1398.HK": {"zh": "工商銀行", "en": "ICBC"},
+    "3988.HK": {"zh": "中國銀行", "en": "Bank of China"},
+    "0011.HK": {"zh": "恒生銀行", "en": "Hang Seng Bank"},
+    "2318.HK": {"zh": "中國平安", "en": "Ping An"},
     # 地產 / 基建
-    "0016.HK": "新鴻基地產",
-    "0001.HK": "長和 CK Hutchison",
-    "0002.HK": "中電控股",
-    "0003.HK": "香港中華煤氣",
+    "0016.HK": {"zh": "新鴻基地產", "en": "Sun Hung Kai"},
+    "0001.HK": {"zh": "長和", "en": "CK Hutchison"},
+    "0002.HK": {"zh": "中電控股", "en": "CLP Holdings"},
+    "0003.HK": {"zh": "香港中華煤氣", "en": "Hong Kong Gas"},
     # 消費 / 零售
-    "0291.HK": "華潤啤酒",
-    "0027.HK": "銀河娛樂",
-    "1928.HK": "金沙中國",
+    "0291.HK": {"zh": "華潤啤酒", "en": "CR Beer"},
+    "0027.HK": {"zh": "銀河娛樂", "en": "Galaxy Entertainment"},
+    "1928.HK": {"zh": "金沙中國", "en": "Sands China"},
     # 交易所 / 指數相關
-    "0388.HK": "港交所 HKEX",
+    "0388.HK": {"zh": "港交所", "en": "HKEX"},
     # 醫療 / 生物
-    "1177.HK": "中國生物製藥",
-    "6160.HK": "百濟神州",
+    "1177.HK": {"zh": "中國生物製藥", "en": "Sino Biopharm"},
+    "6160.HK": {"zh": "百濟神州", "en": "BeiGene"},
     # 汽車 / 新能源
-    "0175.HK": "吉利汽車",
-    "2015.HK": "理想汽車",
-    "9866.HK": "蔚來 NIO",
+    "0175.HK": {"zh": "吉利汽車", "en": "Geely"},
+    "2015.HK": {"zh": "理想汽車", "en": "Li Auto"},
+    "9866.HK": {"zh": "蔚來", "en": "NIO"},
     # ETF
-    "2800.HK": "盈富基金 (恒指ETF)",
-    "3032.HK": "恒生科技ETF",
+    "2800.HK": {"zh": "盈富基金", "en": "Tracker Fund (HSI ETF)"},
+    "3032.HK": {"zh": "恒生科技ETF", "en": "HS Tech ETF"},
 }
 
 DEFAULT_HK_SYMBOLS = [
@@ -100,10 +100,19 @@ async def _fetch_quote_v8(client: httpx.AsyncClient, symbol: str) -> dict | None
         prev  = float(meta.get("chartPreviousClose") or meta.get("previousClose") or price)
         change = round(price - prev, 3)
         change_pct = round((change / prev) * 100, 2) if prev else 0.0
-        display_name = _HK_STOCK_NAMES.get(symbol) or meta.get("shortName") or symbol
+        names = _HK_STOCK_NAMES.get(symbol)
+        if names:
+            name_zh = names["zh"]
+            name_en = names["en"]
+        else:
+            fallback = meta.get("shortName") or symbol
+            name_zh = fallback
+            name_en = fallback
         return {
             "symbol": symbol,
-            "name": display_name,
+            "name": name_zh,       # backward compat
+            "name_zh": name_zh,
+            "name_en": name_en,
             "price": price,
             "change": change,
             "changePercent": change_pct,
@@ -339,3 +348,35 @@ async def get_hk_klines(symbol: str, interval: str = "1d", limit: int = 200):
     result_data = {"symbol": sym, "interval": interval, "data": klines}
     _set_cache(cache_key, result_data, ttl=300)
     return result_data
+
+
+@router.get("/search")
+async def search_hk_stocks(q: str):
+    """Search HK stocks via Yahoo Finance search API."""
+    if not q or len(q.strip()) < 1:
+        return {"results": []}
+    try:
+        url = "https://query1.finance.yahoo.com/v1/finance/search"
+        params = {
+            "q": q,
+            "lang": "en-US",
+            "region": "US",
+            "quotesCount": 10,
+            "newsCount": 0,
+            "enableFuzzyQuery": False,
+            "quotesQueryId": "tss_match_phrase_query",
+        }
+        async with httpx.AsyncClient(timeout=8, headers=_YF_HEADERS) as client:
+            resp = await client.get(url, params=params)
+            resp.raise_for_status()
+            data = resp.json()
+        quotes = data.get("quotes", [])
+        results = [
+            {"symbol": q["symbol"], "name": q.get("shortname") or q.get("longname") or q["symbol"]}
+            for q in quotes
+            if q.get("symbol", "").endswith(".HK") and q.get("quoteType") in ("EQUITY", "ETF", "MUTUALFUND")
+        ]
+        return {"results": results}
+    except Exception as e:
+        logger.warning(f"[hkstock] search failed: {e}")
+        return {"results": []}

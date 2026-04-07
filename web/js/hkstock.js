@@ -14,40 +14,45 @@ const HKStockTab = {
     // ── 可選標的完整清單（分組）─────────────────────────────────
     AVAILABLE_SYMBOLS: [
         // 科技 / 互聯網
-        { symbol: '0700.HK', name: '騰訊 Tencent',        group: '科技/互聯網' },
-        { symbol: '9988.HK', name: '阿里巴巴 Alibaba',     group: '科技/互聯網' },
-        { symbol: '3690.HK', name: '美團 Meituan',         group: '科技/互聯網' },
-        { symbol: '9618.HK', name: '京東 JD.com',          group: '科技/互聯網' },
-        { symbol: '0992.HK', name: '聯想 Lenovo',          group: '科技/互聯網' },
-        { symbol: '0241.HK', name: '阿里健康',             group: '科技/互聯網' },
+        { symbol: '0700.HK', name: '騰訊 Tencent',        name_zh: '騰訊',         name_en: 'Tencent',        group: '科技/互聯網' },
+        { symbol: '9988.HK', name: '阿里巴巴 Alibaba',     name_zh: '阿里巴巴',     name_en: 'Alibaba',        group: '科技/互聯網' },
+        { symbol: '3690.HK', name: '美團 Meituan',         name_zh: '美團',         name_en: 'Meituan',        group: '科技/互聯網' },
+        { symbol: '9618.HK', name: '京東 JD.com',          name_zh: '京東',         name_en: 'JD.com',         group: '科技/互聯網' },
+        { symbol: '0992.HK', name: '聯想 Lenovo',          name_zh: '聯想',         name_en: 'Lenovo',         group: '科技/互聯網' },
+        { symbol: '0241.HK', name: '阿里健康',             name_zh: '阿里健康',     name_en: 'Alibaba Health', group: '科技/互聯網' },
         // 金融
-        { symbol: '0005.HK', name: '匯豐 HSBC',            group: '金融' },
-        { symbol: '0939.HK', name: '建設銀行',             group: '金融' },
-        { symbol: '1398.HK', name: '工商銀行',             group: '金融' },
-        { symbol: '3988.HK', name: '中國銀行',             group: '金融' },
-        { symbol: '0011.HK', name: '恒生銀行',             group: '金融' },
-        { symbol: '2318.HK', name: '中國平安',             group: '金融' },
+        { symbol: '0005.HK', name: '匯豐 HSBC',            name_zh: '匯豐',         name_en: 'HSBC',           group: '金融' },
+        { symbol: '0939.HK', name: '建設銀行',             name_zh: '建設銀行',     name_en: 'CCB',            group: '金融' },
+        { symbol: '1398.HK', name: '工商銀行',             name_zh: '工商銀行',     name_en: 'ICBC',           group: '金融' },
+        { symbol: '3988.HK', name: '中國銀行',             name_zh: '中國銀行',     name_en: 'Bank of China',  group: '金融' },
+        { symbol: '0011.HK', name: '恒生銀行',             name_zh: '恒生銀行',     name_en: 'Hang Seng Bank', group: '金融' },
+        { symbol: '2318.HK', name: '中國平安',             name_zh: '中國平安',     name_en: 'Ping An',        group: '金融' },
         // 地產 / 基建
-        { symbol: '0016.HK', name: '新鴻基地產',           group: '地產/基建' },
-        { symbol: '0001.HK', name: '長和 CK Hutchison',    group: '地產/基建' },
-        { symbol: '0002.HK', name: '中電控股',             group: '地產/基建' },
+        { symbol: '0016.HK', name: '新鴻基地產',           name_zh: '新鴻基地產',   name_en: 'Sun Hung Kai',   group: '地產/基建' },
+        { symbol: '0001.HK', name: '長和 CK Hutchison',    name_zh: '長和',         name_en: 'CK Hutchison',   group: '地產/基建' },
+        { symbol: '0002.HK', name: '中電控股',             name_zh: '中電控股',     name_en: 'CLP Holdings',   group: '地產/基建' },
         // 消費 / 娛樂
-        { symbol: '0291.HK', name: '華潤啤酒',             group: '消費/娛樂' },
-        { symbol: '0027.HK', name: '銀河娛樂',             group: '消費/娛樂' },
-        { symbol: '1928.HK', name: '金沙中國',             group: '消費/娛樂' },
+        { symbol: '0291.HK', name: '華潤啤酒',             name_zh: '華潤啤酒',     name_en: 'CR Beer',        group: '消費/娛樂' },
+        { symbol: '0027.HK', name: '銀河娛樂',             name_zh: '銀河娛樂',     name_en: 'Galaxy Entertainment', group: '消費/娛樂' },
+        { symbol: '1928.HK', name: '金沙中國',             name_zh: '金沙中國',     name_en: 'Sands China',    group: '消費/娛樂' },
         // 醫療 / 生物
-        { symbol: '1177.HK', name: '中國生物製藥',         group: '醫療/生物' },
-        { symbol: '6160.HK', name: '百濟神州',             group: '醫療/生物' },
+        { symbol: '1177.HK', name: '中國生物製藥',         name_zh: '中國生物製藥', name_en: 'Sino Biopharm',  group: '醫療/生物' },
+        { symbol: '6160.HK', name: '百濟神州',             name_zh: '百濟神州',     name_en: 'BeiGene',        group: '醫療/生物' },
         // 汽車 / 新能源
-        { symbol: '0175.HK', name: '吉利汽車',             group: '汽車/新能源' },
-        { symbol: '2015.HK', name: '理想汽車',             group: '汽車/新能源' },
-        { symbol: '9866.HK', name: '蔚來 NIO',             group: '汽車/新能源' },
+        { symbol: '0175.HK', name: '吉利汽車',             name_zh: '吉利汽車',     name_en: 'Geely Auto',     group: '汽車/新能源' },
+        { symbol: '2015.HK', name: '理想汽車',             name_zh: '理想汽車',     name_en: 'Li Auto',        group: '汽車/新能源' },
+        { symbol: '9866.HK', name: '蔚來 NIO',             name_zh: '蔚來',         name_en: 'NIO',            group: '汽車/新能源' },
         // 交易所
-        { symbol: '0388.HK', name: '港交所 HKEX',          group: '交易所' },
+        { symbol: '0388.HK', name: '港交所 HKEX',          name_zh: '港交所',       name_en: 'HKEX',           group: '交易所' },
         // ETF
-        { symbol: '2800.HK', name: '盈富基金 (恒指ETF)',   group: 'ETF' },
-        { symbol: '3032.HK', name: '恒生科技ETF',          group: 'ETF' },
+        { symbol: '2800.HK', name: '盈富基金 (恒指ETF)',   name_zh: '盈富基金 (恒指ETF)', name_en: 'Tracker Fund (HSI ETF)', group: 'ETF' },
+        { symbol: '3032.HK', name: '恒生科技ETF',          name_zh: '恒生科技ETF',  name_en: 'HS Tech ETF',    group: 'ETF' },
     ],
+    getStockName(item) {
+        const lang = window.I18n?.getLanguage?.() || 'zh-TW';
+        if (lang === 'en') return item.name_en || item.name || '';
+        return item.name_zh || item.name || '';
+    },
     STORAGE_KEY: 'hkstock_selected_symbols',
     DEFAULT_SELECTED: ['0700.HK', '9988.HK', '0005.HK', '0388.HK', '3690.HK', '2318.HK', '0939.HK', '2800.HK'],
 
@@ -86,7 +91,7 @@ const HKStockTab = {
                             ${syms.map(s => `
                                 <label class="flex items-center justify-between bg-surface border ${selected.has(s.symbol) ? 'border-primary/40 bg-primary/5' : 'border-white/5'} rounded-xl px-4 py-3 cursor-pointer hover:border-primary/30 transition">
                                     <div>
-                                        <span class="text-sm font-bold text-secondary">${escapeHtml(s.name)}</span>
+                                        <span class="text-sm font-bold text-secondary">${escapeHtml(window.I18n?.getLanguage?.() === 'en' ? (s.name_en || s.name) : (s.name_zh || s.name))}</span>
                                         <span class="text-xs text-textMuted ml-2">${s.symbol}</span>
                                     </div>
                                     <input type="checkbox" value="${s.symbol}" ${selected.has(s.symbol) ? 'checked' : ''}
@@ -121,6 +126,9 @@ const HKStockTab = {
 
     // ── Init ──────────────────────────────────────────────────
     init() {
+        window.addEventListener('languageChanged', () => {
+            if (this.activeSubTab === 'market') this.renderMarket();
+        });
         if (window.MarketStatus) {
             window.MarketStatus.startMarketAutoRefresh(
                 'hkstock',
@@ -188,7 +196,7 @@ const HKStockTab = {
                         <div class="flex-1 min-w-0">
                             <div class="flex items-start justify-between gap-2">
                                 <div class="min-w-0">
-                                    <div class="font-bold text-sm text-secondary leading-tight">${escapeHtml(item.name)}</div>
+                                    <div class="font-bold text-sm text-secondary leading-tight">${escapeHtml(this.getStockName(item))}</div>
                                     <div class="text-[9px] text-textMuted font-bold tracking-wider uppercase opacity-60">${symbol} · ${item.currency || 'HKD'}</div>
                                 </div>
                                 <div class="text-right flex-shrink-0">
@@ -348,6 +356,50 @@ const HKStockTab = {
             this.chartInstance = null;
             this.chartSeries = null;
         }
+    },
+
+    addStock: async function(symbol) {
+        if (!symbol) return;
+        const sym = symbol.toUpperCase().trim();
+        if (!sym) return;
+
+        const active = this.getActiveSymbols();
+        if (active.includes(sym)) {
+            if (window.showToast) window.showToast(`${sym} 已在自選清單`, 'info');
+            const input = document.getElementById('hkstock-add-input');
+            if (input) input.value = '';
+            return;
+        }
+
+        const input = document.getElementById('hkstock-add-input');
+        const btn = input ? input.nextElementSibling : null;
+        let originalIcon = '';
+        if (btn) { originalIcon = btn.innerHTML; btn.innerHTML = '<div class="w-4 h-4 border-2 border-primary/50 border-t-primary rounded-full animate-spin"></div>'; btn.disabled = true; }
+
+        try {
+            const data = await AppAPI.get(`/api/hkstock/market?symbols=${encodeURIComponent(sym)}`);
+            if (data.stocks && data.stocks.length > 0) {
+                active.unshift(sym);
+                this._saveActiveSymbols(active);
+                this.renderMarket();
+                if (window.showToast) window.showToast(`已加入 ${sym}`, 'success');
+            } else {
+                if (window.showToast) window.showToast(`找不到 ${sym}，請確認代碼`, 'error');
+            }
+        } catch(e) {
+            if (window.showToast) window.showToast('查詢失敗：' + e.message, 'error');
+        } finally {
+            if (btn) { btn.innerHTML = originalIcon; btn.disabled = false; }
+            if (input) input.value = '';
+        }
+    },
+
+    removeStock: function(symbol, event) {
+        if (event) event.stopPropagation();
+        const active = this.getActiveSymbols().filter(s => s !== symbol);
+        if (active.length === 0) { if (window.showToast) window.showToast('至少保留一個標的', 'error'); return; }
+        this._saveActiveSymbols(active);
+        this.renderMarket();
     },
 };
 

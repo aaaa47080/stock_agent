@@ -14,40 +14,45 @@ const AStockTab = {
     // ── 可選標的完整清單（分組）─────────────────────────────────
     AVAILABLE_SYMBOLS: [
         // 消費 / 白酒
-        { symbol: '600519.SS', name: '貴州茅台',   group: '消費/白酒' },
-        { symbol: '000858.SZ', name: '五糧液',     group: '消費/白酒' },
-        { symbol: '600887.SS', name: '伊利股份',   group: '消費/白酒' },
-        { symbol: '603288.SS', name: '海天味業',   group: '消費/白酒' },
+        { symbol: '600519.SS', name: '貴州茅台',   name_zh: '貴州茅台',   name_en: 'Kweichow Moutai',  group: '消費/白酒' },
+        { symbol: '000858.SZ', name: '五糧液',     name_zh: '五糧液',     name_en: 'Wuliangye',        group: '消費/白酒' },
+        { symbol: '600887.SS', name: '伊利股份',   name_zh: '伊利股份',   name_en: 'Yili Group',       group: '消費/白酒' },
+        { symbol: '603288.SS', name: '海天味業',   name_zh: '海天味業',   name_en: 'Haitian Flavour',  group: '消費/白酒' },
         // 金融 / 銀行
-        { symbol: '600036.SS', name: '招商銀行',   group: '金融/銀行' },
-        { symbol: '601318.SS', name: '中國平安',   group: '金融/銀行' },
-        { symbol: '601398.SS', name: '工商銀行',   group: '金融/銀行' },
-        { symbol: '601288.SS', name: '農業銀行',   group: '金融/銀行' },
-        { symbol: '600000.SS', name: '浦發銀行',   group: '金融/銀行' },
+        { symbol: '600036.SS', name: '招商銀行',   name_zh: '招商銀行',   name_en: 'CMB',              group: '金融/銀行' },
+        { symbol: '601318.SS', name: '中國平安',   name_zh: '中國平安',   name_en: 'Ping An',          group: '金融/銀行' },
+        { symbol: '601398.SS', name: '工商銀行',   name_zh: '工商銀行',   name_en: 'ICBC',             group: '金融/銀行' },
+        { symbol: '601288.SS', name: '農業銀行',   name_zh: '農業銀行',   name_en: 'ABC',              group: '金融/銀行' },
+        { symbol: '600000.SS', name: '浦發銀行',   name_zh: '浦發銀行',   name_en: 'SPD Bank',         group: '金融/銀行' },
         // 科技 / 半導體
-        { symbol: '688981.SS', name: '中芯國際',   group: '科技/半導體' },
-        { symbol: '002475.SZ', name: '立訊精密',   group: '科技/半導體' },
-        { symbol: '300059.SZ', name: '東方財富',   group: '科技/半導體' },
+        { symbol: '688981.SS', name: '中芯國際',   name_zh: '中芯國際',   name_en: 'SMIC',             group: '科技/半導體' },
+        { symbol: '002475.SZ', name: '立訊精密',   name_zh: '立訊精密',   name_en: 'Luxshare',         group: '科技/半導體' },
+        { symbol: '300059.SZ', name: '東方財富',   name_zh: '東方財富',   name_en: 'East Money',       group: '科技/半導體' },
         // 新能源 / 汽車
-        { symbol: '002594.SZ', name: '比亞迪',     group: '新能源/汽車' },
-        { symbol: '300750.SZ', name: '寧德時代',   group: '新能源/汽車' },
-        { symbol: '601012.SS', name: '隆基綠能',   group: '新能源/汽車' },
+        { symbol: '002594.SZ', name: '比亞迪',     name_zh: '比亞迪',     name_en: 'BYD',              group: '新能源/汽車' },
+        { symbol: '300750.SZ', name: '寧德時代',   name_zh: '寧德時代',   name_en: 'CATL',             group: '新能源/汽車' },
+        { symbol: '601012.SS', name: '隆基綠能',   name_zh: '隆基綠能',   name_en: 'LONGi Green',      group: '新能源/汽車' },
         // 醫療 / 生物
-        { symbol: '600276.SS', name: '恒瑞醫藥',   group: '醫療/生物' },
-        { symbol: '300015.SZ', name: '愛爾眼科',   group: '醫療/生物' },
-        { symbol: '600196.SS', name: '復星醫藥',   group: '醫療/生物' },
+        { symbol: '600276.SS', name: '恒瑞醫藥',   name_zh: '恒瑞醫藥',   name_en: 'Hengrui Pharma',   group: '醫療/生物' },
+        { symbol: '300015.SZ', name: '愛爾眼科',   name_zh: '愛爾眼科',   name_en: "Aier Eye Hospital", group: '醫療/生物' },
+        { symbol: '600196.SS', name: '復星醫藥',   name_zh: '復星醫藥',   name_en: 'Fosun Pharma',     group: '醫療/生物' },
         // 能源
-        { symbol: '600028.SS', name: '中國石化',   group: '能源' },
-        { symbol: '601857.SS', name: '中國石油',   group: '能源' },
-        { symbol: '600941.SS', name: '中國移動',   group: '能源' },
+        { symbol: '600028.SS', name: '中國石化',   name_zh: '中國石化',   name_en: 'Sinopec',          group: '能源' },
+        { symbol: '601857.SS', name: '中國石油',   name_zh: '中國石油',   name_en: 'PetroChina',       group: '能源' },
+        { symbol: '600941.SS', name: '中國移動',   name_zh: '中國移動',   name_en: 'China Mobile',     group: '能源' },
         // 地產
-        { symbol: '000002.SZ', name: '萬科A',      group: '地產' },
-        { symbol: '600048.SS', name: '保利發展',   group: '地產' },
+        { symbol: '000002.SZ', name: '萬科A',      name_zh: '萬科A',      name_en: 'Vanke',            group: '地產' },
+        { symbol: '600048.SS', name: '保利發展',   name_zh: '保利發展',   name_en: 'Poly Developments', group: '地產' },
         // ETF
-        { symbol: '510300.SS', name: '滬深300ETF', group: 'ETF' },
-        { symbol: '510500.SS', name: '中證500ETF', group: 'ETF' },
-        { symbol: '159915.SZ', name: '創業板ETF',  group: 'ETF' },
+        { symbol: '510300.SS', name: '滬深300ETF', name_zh: '滬深300ETF', name_en: 'CSI 300 ETF',      group: 'ETF' },
+        { symbol: '510500.SS', name: '中證500ETF', name_zh: '中證500ETF', name_en: 'CSI 500 ETF',      group: 'ETF' },
+        { symbol: '159915.SZ', name: '創業板ETF',  name_zh: '創業板ETF',  name_en: 'ChiNext ETF',      group: 'ETF' },
     ],
+    getStockName(item) {
+        const lang = window.I18n?.getLanguage?.() || 'zh-TW';
+        if (lang === 'en') return item.name_en || item.name || '';
+        return item.name_zh || item.name || '';
+    },
     STORAGE_KEY: 'astock_selected_symbols',
     DEFAULT_SELECTED: ['600519.SS', '000858.SZ', '600036.SS', '002594.SZ', '300750.SZ', '600028.SS', '601318.SS', '510300.SS'],
 
@@ -86,7 +91,7 @@ const AStockTab = {
                             ${syms.map(s => `
                                 <label class="flex items-center justify-between bg-surface border ${selected.has(s.symbol) ? 'border-primary/40 bg-primary/5' : 'border-white/5'} rounded-xl px-4 py-3 cursor-pointer hover:border-primary/30 transition">
                                     <div>
-                                        <span class="text-sm font-bold text-secondary">${escapeHtml(s.name)}</span>
+                                        <span class="text-sm font-bold text-secondary">${escapeHtml(window.I18n?.getLanguage?.() === 'en' ? (s.name_en || s.name) : (s.name_zh || s.name))}</span>
                                         <span class="text-xs text-textMuted ml-2">${s.symbol}</span>
                                     </div>
                                     <input type="checkbox" value="${s.symbol}" ${selected.has(s.symbol) ? 'checked' : ''}
@@ -121,6 +126,9 @@ const AStockTab = {
 
     // ── Init ──────────────────────────────────────────────────
     init() {
+        window.addEventListener('languageChanged', () => {
+            if (this.activeSubTab === 'market') this.renderMarket();
+        });
         if (window.MarketStatus) {
             window.MarketStatus.startMarketAutoRefresh(
                 'astock',
@@ -190,7 +198,7 @@ const AStockTab = {
                         <div class="flex-1 min-w-0">
                             <div class="flex items-start justify-between gap-2">
                                 <div class="min-w-0">
-                                    <div class="font-bold text-sm text-secondary leading-tight">${escapeHtml(item.name)}</div>
+                                    <div class="font-bold text-sm text-secondary leading-tight">${escapeHtml(this.getStockName(item))}</div>
                                     <div class="text-[9px] text-textMuted font-bold tracking-wider uppercase opacity-60">${symbol} · ${item.currency || 'CNY'}</div>
                                 </div>
                                 <div class="text-right flex-shrink-0">
@@ -350,6 +358,50 @@ const AStockTab = {
             this.chartInstance = null;
             this.chartSeries = null;
         }
+    },
+
+    addStock: async function(symbol) {
+        if (!symbol) return;
+        const sym = symbol.toUpperCase().trim();
+        if (!sym) return;
+
+        const active = this.getActiveSymbols();
+        if (active.includes(sym)) {
+            if (window.showToast) window.showToast(`${sym} 已在自選清單`, 'info');
+            const input = document.getElementById('astock-add-input');
+            if (input) input.value = '';
+            return;
+        }
+
+        const input = document.getElementById('astock-add-input');
+        const btn = input ? input.nextElementSibling : null;
+        let originalIcon = '';
+        if (btn) { originalIcon = btn.innerHTML; btn.innerHTML = '<div class="w-4 h-4 border-2 border-primary/50 border-t-primary rounded-full animate-spin"></div>'; btn.disabled = true; }
+
+        try {
+            const data = await AppAPI.get(`/api/astock/market?symbols=${encodeURIComponent(sym)}`);
+            if (data.stocks && data.stocks.length > 0) {
+                active.unshift(sym);
+                this._saveActiveSymbols(active);
+                this.renderMarket();
+                if (window.showToast) window.showToast(`已加入 ${sym}`, 'success');
+            } else {
+                if (window.showToast) window.showToast(`找不到 ${sym}，請確認代碼`, 'error');
+            }
+        } catch(e) {
+            if (window.showToast) window.showToast('查詢失敗：' + e.message, 'error');
+        } finally {
+            if (btn) { btn.innerHTML = originalIcon; btn.disabled = false; }
+            if (input) input.value = '';
+        }
+    },
+
+    removeStock: function(symbol, event) {
+        if (event) event.stopPropagation();
+        const active = this.getActiveSymbols().filter(s => s !== symbol);
+        if (active.length === 0) { if (window.showToast) window.showToast('至少保留一個標的', 'error'); return; }
+        this._saveActiveSymbols(active);
+        this.renderMarket();
     },
 };
 
