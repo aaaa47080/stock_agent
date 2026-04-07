@@ -46,28 +46,60 @@ INDEX_SYMBOLS = [
     {"symbol": "^IXIC", "name": "那斯達克"},
 ]
 
+# Yahoo Finance headers (for search endpoint)
+_YF_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    "Accept": "application/json",
+}
+
 # Static name table for curated symbols (avoids slow yfinance .info calls)
-_US_STOCK_NAMES: dict[str, str] = {
+# US names are English-only: zh = en = English name
+_US_STOCK_NAMES: dict[str, dict] = {
     # 科技
-    "AAPL": "Apple", "MSFT": "Microsoft", "GOOGL": "Alphabet",
-    "AMZN": "Amazon", "META": "Meta", "NVDA": "NVIDIA",
-    "TSLA": "Tesla", "NFLX": "Netflix", "AMD": "AMD",
-    "INTC": "Intel", "QCOM": "Qualcomm", "AVGO": "Broadcom",
-    "TSM": "TSMC ADR", "ORCL": "Oracle", "CRM": "Salesforce",
+    "AAPL": {"zh": "Apple", "en": "Apple"},
+    "MSFT": {"zh": "Microsoft", "en": "Microsoft"},
+    "GOOGL": {"zh": "Alphabet", "en": "Alphabet"},
+    "AMZN": {"zh": "Amazon", "en": "Amazon"},
+    "META": {"zh": "Meta", "en": "Meta"},
+    "NVDA": {"zh": "NVIDIA", "en": "NVIDIA"},
+    "TSLA": {"zh": "Tesla", "en": "Tesla"},
+    "NFLX": {"zh": "Netflix", "en": "Netflix"},
+    "AMD": {"zh": "AMD", "en": "AMD"},
+    "INTC": {"zh": "Intel", "en": "Intel"},
+    "QCOM": {"zh": "Qualcomm", "en": "Qualcomm"},
+    "AVGO": {"zh": "Broadcom", "en": "Broadcom"},
+    "TSM": {"zh": "TSMC ADR", "en": "TSMC ADR"},
+    "ORCL": {"zh": "Oracle", "en": "Oracle"},
+    "CRM": {"zh": "Salesforce", "en": "Salesforce"},
     # 金融
-    "JPM": "JPMorgan", "BAC": "Bank of America", "GS": "Goldman Sachs",
-    "WFC": "Wells Fargo", "V": "Visa", "MA": "Mastercard",
+    "JPM": {"zh": "JPMorgan", "en": "JPMorgan"},
+    "BAC": {"zh": "Bank of America", "en": "Bank of America"},
+    "GS": {"zh": "Goldman Sachs", "en": "Goldman Sachs"},
+    "WFC": {"zh": "Wells Fargo", "en": "Wells Fargo"},
+    "V": {"zh": "Visa", "en": "Visa"},
+    "MA": {"zh": "Mastercard", "en": "Mastercard"},
     # 消費
-    "WMT": "Walmart", "COST": "Costco", "HD": "Home Depot",
-    "NKE": "Nike", "MCD": "McDonald's", "SBUX": "Starbucks",
+    "WMT": {"zh": "Walmart", "en": "Walmart"},
+    "COST": {"zh": "Costco", "en": "Costco"},
+    "HD": {"zh": "Home Depot", "en": "Home Depot"},
+    "NKE": {"zh": "Nike", "en": "Nike"},
+    "MCD": {"zh": "McDonald's", "en": "McDonald's"},
+    "SBUX": {"zh": "Starbucks", "en": "Starbucks"},
     # 醫療
-    "JNJ": "J&J", "UNH": "UnitedHealth", "PFE": "Pfizer",
-    "ABBV": "AbbVie", "MRK": "Merck",
+    "JNJ": {"zh": "J&J", "en": "J&J"},
+    "UNH": {"zh": "UnitedHealth", "en": "UnitedHealth"},
+    "PFE": {"zh": "Pfizer", "en": "Pfizer"},
+    "ABBV": {"zh": "AbbVie", "en": "AbbVie"},
+    "MRK": {"zh": "Merck", "en": "Merck"},
     # 能源
-    "XOM": "ExxonMobil", "CVX": "Chevron",
+    "XOM": {"zh": "ExxonMobil", "en": "ExxonMobil"},
+    "CVX": {"zh": "Chevron", "en": "Chevron"},
     # ETF
-    "SPY": "S&P 500 ETF", "QQQ": "Nasdaq ETF",
-    "DIA": "Dow Jones ETF", "GLD": "Gold ETF", "IWM": "Russell 2000 ETF",
+    "SPY": {"zh": "S&P 500 ETF", "en": "S&P 500 ETF"},
+    "QQQ": {"zh": "Nasdaq ETF", "en": "Nasdaq ETF"},
+    "DIA": {"zh": "Dow Jones ETF", "en": "Dow Jones ETF"},
+    "GLD": {"zh": "Gold ETF", "en": "Gold ETF"},
+    "IWM": {"zh": "Russell 2000 ETF", "en": "Russell 2000 ETF"},
 }
 
 
@@ -81,8 +113,23 @@ def _fetch_quote_sync(symbol: str) -> dict | None:
         prev = round(float(fi.previous_close), 2)
         chg = round(price - prev, 2)
         chg_p = round((chg / prev) * 100, 2) if prev else 0.0
-        name = _US_STOCK_NAMES.get(symbol) or symbol
-        return {"symbol": symbol, "name": name, "price": price, "change": chg, "changePercent": chg_p}
+        names = _US_STOCK_NAMES.get(symbol)
+        if names:
+            name_zh = names["zh"]
+            name_en = names["en"]
+        else:
+            fallback = symbol
+            name_zh = fallback
+            name_en = fallback
+        return {
+            "symbol": symbol,
+            "name": name_zh,       # backward compat
+            "name_zh": name_zh,
+            "name_en": name_en,
+            "price": price,
+            "change": chg,
+            "changePercent": chg_p,
+        }
     except Exception as e:
         logger.warning(f"[usstock] yfinance quote failed {symbol}: {e}")
         return None
@@ -113,9 +160,18 @@ async def _fetch_quotes_finnhub(symbols: list[str]) -> list[dict]:
                 continue  # Finnhub returns 0 for unknown symbols
             chg = round(price - prev, 2)
             chg_p = round((chg / prev) * 100, 2) if prev else 0.0
+            names = _US_STOCK_NAMES.get(sym)
+            if names:
+                name_zh = names["zh"]
+                name_en = names["en"]
+            else:
+                name_zh = sym
+                name_en = sym
             results.append({
                 "symbol": sym,
-                "name": _US_STOCK_NAMES.get(sym, sym),
+                "name": name_zh,       # backward compat
+                "name_zh": name_zh,
+                "name_en": name_en,
                 "price": price,
                 "change": chg,
                 "changePercent": chg_p,
@@ -394,3 +450,38 @@ async def get_us_klines(symbol: str, interval: str = "1d", limit: int = 200):
     data = {"symbol": sym, "interval": interval, "data": klines}
     _set_cache(cache_key, data, ttl=300)
     return data
+
+
+@router.get("/search")
+async def search_us_stocks(q: str):
+    """Search US stocks via Yahoo Finance search API."""
+    if not q or len(q.strip()) < 1:
+        return {"results": []}
+    try:
+        url = "https://query1.finance.yahoo.com/v1/finance/search"
+        params = {
+            "q": q,
+            "lang": "en-US",
+            "region": "US",
+            "quotesCount": 10,
+            "newsCount": 0,
+            "enableFuzzyQuery": False,
+            "quotesQueryId": "tss_match_phrase_query",
+        }
+        async with httpx.AsyncClient(timeout=8, headers=_YF_HEADERS) as client:
+            resp = await client.get(url, params=params)
+            resp.raise_for_status()
+            data = resp.json()
+        quotes = data.get("quotes", [])
+        _us_exchanges = {"NMS", "NYQ", "NGM", "NCM", "PCX", "ASE"}
+        results = [
+            {"symbol": q["symbol"], "name": q.get("shortname") or q.get("longname") or q["symbol"]}
+            for q in quotes
+            if "." not in q.get("symbol", "")
+            and q.get("quoteType") == "EQUITY"
+            and q.get("exchange") in _us_exchanges
+        ]
+        return {"results": results}
+    except Exception as e:
+        logger.warning(f"[usstock] search failed: {e}")
+        return {"results": []}

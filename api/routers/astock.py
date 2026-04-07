@@ -42,48 +42,44 @@ _YF_HEADERS = {
 }
 
 # ── Curated A-share name table ─────────────────────────────────────────────────
-_A_STOCK_NAMES: dict[str, str] = {
+_A_STOCK_NAMES: dict[str, dict] = {
     # 消費 / 白酒
-    "600519.SS": "貴州茅台",
-    "000858.SZ": "五糧液",
-    "600036.SS": "招商銀行",
+    "600519.SS": {"zh": "貴州茅台", "en": "Kweichow Moutai"},
+    "000858.SZ": {"zh": "五糧液", "en": "Wuliangye"},
+    "600036.SS": {"zh": "招商銀行", "en": "China Merchants Bank"},
     # 金融 / 銀行
-    "601318.SS": "中國平安",
-    "600000.SS": "浦發銀行",
-    "601398.SS": "工商銀行",
-    "601288.SS": "農業銀行",
-    "600016.SS": "民生銀行",
+    "601318.SS": {"zh": "中國平安", "en": "Ping An"},
+    "600000.SS": {"zh": "浦發銀行", "en": "SPDB"},
+    "601398.SS": {"zh": "工商銀行", "en": "ICBC"},
+    "601288.SS": {"zh": "農業銀行", "en": "ABC"},
+    "600016.SS": {"zh": "民生銀行", "en": "CMBC"},
     # 科技 / 半導體
-    "688981.SS": "中芯國際",
-    "002594.SZ": "比亞迪",
-    "300750.SZ": "寧德時代",
-    "601012.SS": "隆基綠能",
-    "600276.SS": "恒瑞醫藥",
+    "688981.SS": {"zh": "中芯國際", "en": "SMIC"},
+    "002594.SZ": {"zh": "比亞迪", "en": "BYD"},
+    "300750.SZ": {"zh": "寧德時代", "en": "CATL"},
+    "601012.SS": {"zh": "隆基綠能", "en": "LONGi"},
+    "600276.SS": {"zh": "恒瑞醫藥", "en": "Hengrui"},
     # 互聯網 / 科技
-    "600測.SS": "科大訊飛",  # placeholder removed below
-    "002475.SZ": "立訊精密",
-    "300059.SZ": "東方財富",
+    "002475.SZ": {"zh": "立訊精密", "en": "Luxshare"},
+    "300059.SZ": {"zh": "東方財富", "en": "East Money"},
     # 能源
-    "600028.SS": "中國石化",
-    "601857.SS": "中國石油",
-    "600941.SS": "中國移動",
+    "600028.SS": {"zh": "中國石化", "en": "Sinopec"},
+    "601857.SS": {"zh": "中國石油", "en": "PetroChina"},
+    "600941.SS": {"zh": "中國移動", "en": "China Mobile"},
     # 地產
-    "000002.SZ": "萬科A",
-    "600048.SS": "保利發展",
+    "000002.SZ": {"zh": "萬科A", "en": "Vanke"},
+    "600048.SS": {"zh": "保利發展", "en": "Poly Developments"},
     # 食品 / 消費
-    "600887.SS": "伊利股份",
-    "603288.SS": "海天味業",
+    "600887.SS": {"zh": "伊利股份", "en": "Yili"},
+    "603288.SS": {"zh": "海天味業", "en": "Haitian Flavoring"},
     # 醫療
-    "300015.SZ": "愛爾眼科",
-    "600196.SS": "復星醫藥",
+    "300015.SZ": {"zh": "愛爾眼科", "en": "Aier Eye"},
+    "600196.SS": {"zh": "復星醫藥", "en": "Fosun Pharma"},
     # ETF
-    "510300.SS": "滬深300ETF",
-    "510500.SS": "中證500ETF",
-    "159915.SZ": "創業板ETF",
+    "510300.SS": {"zh": "滬深300ETF", "en": "CSI 300 ETF"},
+    "510500.SS": {"zh": "中證500ETF", "en": "CSI 500 ETF"},
+    "159915.SZ": {"zh": "創業板ETF", "en": "ChiNext ETF"},
 }
-
-# 移除測試用佔位符
-_A_STOCK_NAMES.pop("600測.SS", None)
 
 DEFAULT_A_SYMBOLS = [
     "600519.SS", "000858.SZ", "600036.SS", "601318.SS",
@@ -105,10 +101,19 @@ async def _fetch_quote_v8(client: httpx.AsyncClient, symbol: str) -> dict | None
         prev  = float(meta.get("chartPreviousClose") or meta.get("previousClose") or price)
         change = round(price - prev, 2)
         change_pct = round((change / prev) * 100, 2) if prev else 0.0
-        display_name = _A_STOCK_NAMES.get(symbol) or meta.get("shortName") or symbol
+        names = _A_STOCK_NAMES.get(symbol)
+        if names:
+            name_zh = names["zh"]
+            name_en = names["en"]
+        else:
+            fallback = meta.get("shortName") or symbol
+            name_zh = fallback
+            name_en = fallback
         return {
             "symbol": symbol,
-            "name": display_name,
+            "name": name_zh,       # backward compat
+            "name_zh": name_zh,
+            "name_en": name_en,
             "price": price,
             "change": change,
             "changePercent": change_pct,
@@ -343,3 +348,36 @@ async def get_a_klines(symbol: str, interval: str = "1d", limit: int = 200):
     result_data = {"symbol": sym, "interval": interval, "data": klines}
     _set_cache(cache_key, result_data, ttl=300)
     return result_data
+
+
+@router.get("/search")
+async def search_a_stocks(q: str):
+    """Search A-share stocks via Yahoo Finance search API."""
+    if not q or len(q.strip()) < 1:
+        return {"results": []}
+    try:
+        url = "https://query1.finance.yahoo.com/v1/finance/search"
+        params = {
+            "q": q,
+            "lang": "en-US",
+            "region": "US",
+            "quotesCount": 10,
+            "newsCount": 0,
+            "enableFuzzyQuery": False,
+            "quotesQueryId": "tss_match_phrase_query",
+        }
+        async with httpx.AsyncClient(timeout=8, headers=_YF_HEADERS) as client:
+            resp = await client.get(url, params=params)
+            resp.raise_for_status()
+            data = resp.json()
+        quotes = data.get("quotes", [])
+        results = [
+            {"symbol": q["symbol"], "name": q.get("shortname") or q.get("longname") or q["symbol"]}
+            for q in quotes
+            if (q.get("symbol", "").endswith(".SS") or q.get("symbol", "").endswith(".SZ"))
+            and q.get("quoteType") in ("EQUITY", "ETF", "MUTUALFUND")
+        ]
+        return {"results": results}
+    except Exception as e:
+        logger.warning(f"[astock] search failed: {e}")
+        return {"results": []}
