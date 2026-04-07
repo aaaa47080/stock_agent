@@ -280,6 +280,16 @@ const GlobalNav = {
         const nav = document.getElementById(this.NAV_ID);
         if (!container || !nav) return;
 
+        if (window.innerWidth < 768) {
+            localStorage.removeItem('navPosition');
+            container.style.transform = 'translateX(-50%)';
+            const dragHandleMobile = nav.querySelector('.drag-handle');
+            if (dragHandleMobile) {
+                dragHandleMobile.style.display = 'none';
+            }
+            return;
+        }
+
         // State Variables
         let isDragging = false;
         let currentX = 0,

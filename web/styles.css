@@ -908,7 +908,8 @@ nav.sticky {
 
 @media (max-width: 767px) {
     #global-nav-container {
-        bottom: calc(var(--mobile-nav-bottom-gap) + var(--mobile-safe-bottom)) !important;
+        bottom: calc(0.5rem + var(--mobile-safe-bottom)) !important;
+        transform: translateX(-50%) !important;
     }
 
     #toast-container {
@@ -920,20 +921,20 @@ nav.sticky {
     }
 
     #chat-messages {
-        padding-bottom: calc(9rem + var(--mobile-safe-bottom) + var(--chat-keyboard-offset));
+        padding-bottom: calc(var(--shell-fixed-stack-offset, 0px) + 1rem);
     }
 
     #no-llm-key-warning {
-        bottom: calc(9rem + var(--mobile-safe-bottom));
+        bottom: calc(var(--shell-fixed-nav-height, 0px) + var(--shell-fixed-input-height, 0px) + 1rem + var(--mobile-safe-bottom));
     }
 
     #chat-tab > .fixed.bottom-0,
     [data-shell-fixed-input] {
         left: 0 !important;
         right: 0 !important;
-        bottom: 0 !important;
+        bottom: calc(var(--shell-fixed-nav-height, 0px) + 0.5rem + var(--mobile-safe-bottom)) !important;
         padding: 0.5rem 0.75rem;
-        padding-bottom: calc(0.5rem + var(--mobile-safe-bottom) + var(--chat-keyboard-offset));
+        padding-bottom: 0.5rem;
     }
 
     [data-shell-fixed-input] > div {
@@ -994,6 +995,10 @@ nav.sticky {
         opacity: 0;
         pointer-events: none;
         transform: translateX(-50%) translateY(1.5rem);
+    }
+
+    html.chat-keyboard-open [data-shell-fixed-input] {
+        bottom: calc(var(--chat-keyboard-offset) + 0.5rem) !important;
     }
 
     html.chat-keyboard-open #toast-container {

@@ -17,10 +17,17 @@ function getFixedStackHeight() {
 
     return selectors.reduce(function (total, selector) {
         return total + Array.from(document.querySelectorAll(selector)).reduce(function (sum, element) {
-            if (!element || element.offsetParent === null) {
+            if (!element) {
                 return sum;
             }
             const computedStyle = window.getComputedStyle(element);
+            if (
+                computedStyle.display === 'none' ||
+                computedStyle.visibility === 'hidden' ||
+                computedStyle.opacity === '0'
+            ) {
+                return sum;
+            }
 
             if (
                 selector === '[data-shell-fixed-input]' &&
@@ -35,6 +42,29 @@ function getFixedStackHeight() {
     }, 0);
 }
 
+function getVisibleHeight(selector) {
+    return Array.from(document.querySelectorAll(selector)).reduce(function (sum, element) {
+        if (!element) {
+            return sum;
+        }
+        const computedStyle = window.getComputedStyle(element);
+        if (
+            computedStyle.display === 'none' ||
+            computedStyle.visibility === 'hidden' ||
+            computedStyle.opacity === '0'
+        ) {
+            return sum;
+        }
+        if (
+            selector === '[data-shell-fixed-nav]' &&
+            ROOT.classList.contains('chat-keyboard-open')
+        ) {
+            return sum;
+        }
+        return sum + element.getBoundingClientRect().height;
+    }, 0);
+}
+
 function applyScrollPadding() {
     document.querySelectorAll('[data-shell-scroll]').forEach(function (element) {
         const extra = element.getAttribute('data-shell-scroll-extra') || '0px';
@@ -44,7 +74,11 @@ function applyScrollPadding() {
 
 function syncLayout() {
     const fixedStackHeight = getFixedStackHeight();
+    const navHeight = getVisibleHeight('[data-shell-fixed-nav]');
+    const inputHeight = getVisibleHeight('[data-shell-fixed-input]');
     ROOT.style.setProperty('--shell-fixed-stack-offset', fixedStackHeight + 'px');
+    ROOT.style.setProperty('--shell-fixed-nav-height', navHeight + 'px');
+    ROOT.style.setProperty('--shell-fixed-input-height', inputHeight + 'px');
     ROOT.style.setProperty('--shell-toast-bottom', 'calc(' + fixedStackHeight + 'px + 1rem + env(safe-area-inset-bottom, 0px))');
     applyScrollPadding();
 }
