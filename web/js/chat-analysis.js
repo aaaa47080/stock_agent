@@ -173,34 +173,7 @@ function normalizeChatErrorMessage(message, fallback) {
 }
 
 function renderResponseMetadata(metadata = {}) {
-    const mode = metadata.analysis_mode || 'quick';
-    const verificationStatus = metadata.verification_status || mode;
-    const usedTools = Array.isArray(metadata.used_tools) ? metadata.used_tools : [];
-    const parts = [
-        `<span>模式: ${escapeHtml(mode)}</span>`,
-        `<span>驗證: ${escapeHtml(verificationStatus)}</span>`,
-    ];
-
-    if (metadata.data_as_of) {
-        parts.push(`<span>資料時間: ${escapeHtml(String(metadata.data_as_of))}</span>`);
-    }
-    if (metadata.query_type) {
-        parts.push(`<span>查詢類型: ${escapeHtml(String(metadata.query_type))}</span>`);
-    }
-    if (metadata.resolved_market) {
-        parts.push(`<span>市場: ${escapeHtml(String(metadata.resolved_market))}</span>`);
-    }
-    if (metadata.policy_path) {
-        parts.push(`<span>路徑: ${escapeHtml(String(metadata.policy_path))}</span>`);
-    }
-    if (usedTools.length) {
-        parts.push(`<span>工具: ${escapeHtml(usedTools.join(', '))}</span>`);
-    }
-    if (metadata.quality_fail_reason) {
-        parts.push(`<span class="text-danger">原因: ${escapeHtml(metadata.quality_fail_reason)}</span>`);
-    }
-
-    return `<div class="mt-3 flex flex-wrap gap-2 text-[11px] text-textMuted/70 font-mono">${parts.map((part) => `<span class="px-2 py-1 rounded-full bg-white/5 border border-white/10">${part}</span>`).join('')}</div>`;
+    return '';
 }
 window.renderResponseMetadata = renderResponseMetadata;
 
@@ -577,24 +550,7 @@ window.currentAnalysisController = AppStore.get('currentAnalysisController');
                         const timeBadge = document.createElement('div');
                         timeBadge.className =
                             'mt-4 flex items-center justify-between text-xs text-textMuted/60 font-mono';
-
-                        let feedbackHtml = '';
-                        const codebookId = botMsgDiv.dataset.codebookId;
-                        if (codebookId) {
-                            feedbackHtml = `
-                                <div class="flex items-center gap-2">
-                                    <span class="opacity-50">分析品質回饋：</span>
-                                    <button onclick="submitFeedback('${codebookId}', 1, this)" class="p-1 hover:text-success transition" title="有幫助">
-                                        <i data-lucide="thumbs-up" class="w-3.5 h-3.5"></i>
-                                    </button>
-                                    <button onclick="submitFeedback('${codebookId}', -1, this)" class="p-1 hover:text-danger transition" title="需改進">
-                                        <i data-lucide="thumbs-down" class="w-3.5 h-3.5"></i>
-                                    </button>
-                                </div>
-                            `;
-                        }
-
-                        timeBadge.innerHTML = `<span>分析完成，耗時 ${totalTime}s</span>${feedbackHtml}`;
+                        timeBadge.innerHTML = `<span>耗時 ${totalTime}s</span>`;
                         botMsgDiv.appendChild(timeBadge);
                         if (window.lucide) {
                             lucide.createIcons({ nodes: [botMsgDiv] });

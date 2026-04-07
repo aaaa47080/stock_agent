@@ -78,3 +78,18 @@ okxstock_agenttemp_context_plugin/
 node_modules/
 dist/
 .gstack/
+
+# Snapshot / debug dumps
+chat-input-area
+forum-after-*
+forum-current
+forum-final-check
+forum-full-page
+forum-redesign*
+forum-scrolled*
+forum-tab-view
+tags-overflow-fix
+Dokxstock_agent_diff.txt
+.codex_tmp/
+test-results/
+test_results/

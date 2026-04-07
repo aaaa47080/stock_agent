@@ -909,8 +909,8 @@ nav.sticky {
         left: 0 !important;
         right: 0 !important;
         bottom: 0 !important;
-        padding: 0.5rem 0.75rem;
-        padding-bottom: calc(4.75rem + var(--mobile-safe-bottom) + var(--chat-keyboard-offset));
+        padding: 0.625rem 0.75rem;
+        padding-bottom: calc(4rem + var(--mobile-safe-bottom) + var(--chat-keyboard-offset));
     }
 
     [data-shell-fixed-input] > div {
@@ -919,15 +919,23 @@ nav.sticky {
         min-width: 0;
     }
 
-    [data-shell-fixed-input] .flex.items-end {
+    .chat-input-row {
         align-items: center;
     }
 
-    #user-input {
+    .chat-input-shell {
         min-width: 0;
-        font-size: 0.9375rem;
+        min-height: 3rem;
+        border-radius: 1.4rem;
     }
+
+    #user-input {
         width: 100%;
+        min-width: 0;
+        font-size: 16px;
+        line-height: 1.4;
+        padding-left: 0.125rem;
+        padding-right: 0.125rem;
     }
 
     #analysis-mode-select {
@@ -937,13 +945,8 @@ nav.sticky {
         font-size: 0.75rem;
     }
 
-    #user-input {
-        font-size: 16px;
-        padding-left: 0.5rem;
-        padding-right: 0.5rem;
-    }
-
-    #send-btn {
+    #send-btn,
+    .chat-send-btn {
         width: 2.75rem;
         height: 2.75rem;
     }
