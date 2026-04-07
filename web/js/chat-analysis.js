@@ -177,6 +177,49 @@ function renderResponseMetadata(metadata = {}) {
 }
 window.renderResponseMetadata = renderResponseMetadata;
 
+function normalizeRenderedChatContent(rawContent) {
+    if (typeof rawContent !== 'string') {
+        return rawContent;
+    }
+
+    const trimmed = rawContent.trim();
+    if (!trimmed) {
+        return rawContent;
+    }
+
+    const directPatterns = [
+        /["'](?:final_answer|answer|response|content|message|output_text|text)["']\s*:\s*["']([\s\S]*?)["']\s*(?:,|})/,
+        /```(?:json)?\s*([\s\S]*?)```/i,
+    ];
+
+    for (const pattern of directPatterns) {
+        const match = trimmed.match(pattern);
+        if (match && match[1]) {
+            const candidate = match[1]
+                .replace(/\\n/g, '\n')
+                .replace(/\\"/g, '"')
+                .replace(/\\'/g, "'")
+                .trim();
+            if (candidate && candidate !== trimmed) {
+                return candidate;
+            }
+        }
+    }
+
+    if (
+        (trimmed.startsWith('{') || trimmed.startsWith('[')) &&
+        (trimmed.includes("'metadata'") ||
+            trimmed.includes('"metadata"') ||
+            trimmed.includes("'raw'") ||
+            trimmed.includes('"raw"'))
+    ) {
+        return '收到非預期的模型原始輸出，已隱藏原始資料。請再試一次，或改問得更具體一些。';
+    }
+
+    return rawContent;
+}
+window.normalizeRenderedChatContent = normalizeRenderedChatContent;
+
 async function sendMessage() {
     const input = document.getElementById('user-input');
     const sendBtn = document.getElementById('send-btn');
@@ -724,6 +767,7 @@ window.resetChatUI = resetChatUI;
 
 // Reuse the renderStoredBotMessage function from previous step
 function renderStoredBotMessage(fullContent, isStreaming = false, elapsedTime = null) {
+    fullContent = normalizeRenderedChatContent(fullContent);
     let processContent = '';
     let resultContent = '';
     let hasProcessContent = false;

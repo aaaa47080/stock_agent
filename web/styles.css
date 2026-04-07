@@ -118,7 +118,10 @@ button, a, input, select, textarea, .btn, .tab-btn, .nav-btn, .card, .modal, .to
     font-size: 0.9375rem;
     line-height: 1.6;
     color: var(--color-text-primary);
+    min-width: 0;
+    overflow-wrap: anywhere;
     word-break: break-word;
+    white-space: normal;
 }
 
 /* AI content — no bubble, just text */
@@ -129,6 +132,9 @@ button, a, input, select, textarea, .btn, .tab-btn, .nav-btn, .card, .modal, .to
     font-size: 0.9375rem;
     line-height: 1.75;
     color: var(--color-text-secondary, var(--color-text-primary));
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: normal;
 }
 
 /* ── Legacy classes kept for backward compat ─────────────────── */
@@ -147,6 +153,7 @@ button, a, input, select, textarea, .btn, .tab-btn, .nav-btn, .card, .modal, .to
     padding: 0;
     margin-right: auto;
     max-width: 100%;
+    min-width: 0;
 }
 .bot-bubble-row { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.25rem 0; max-width: 48rem; margin: 0 auto; }
 .bot-avatar {
@@ -402,6 +409,22 @@ input[type=range]:focus {
     padding: 10px 16px;
     font-size: 0.85rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.prose,
+.prose p,
+.prose li,
+.prose blockquote,
+.prose div,
+.prose span {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+    white-space: normal;
+}
+.prose pre,
+.prose code {
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: anywhere;
 }
 /* 第一欄（標籤欄）較暗 */
 .prose td:first-child, .prose th:first-child {
