@@ -247,48 +247,51 @@
 
                 <!-- Input Area -->
                 <div data-shell-fixed-input
-                    class="fixed bottom-0 left-0 md:left-72 right-0 z-40 bg-background/80 backdrop-blur-xl border-t border-white/5 px-4 md:px-8 py-4">
-                    <div class="relative w-full max-w-4xl mx-auto">
-                        <!-- Hidden Options -->
+                    class="fixed bottom-0 left-0 md:left-72 right-0 z-40 bg-background/90 backdrop-blur-xl border-t border-white/5 px-3 md:px-6 pt-2 pb-3">
+                    <div class="relative w-full max-w-3xl mx-auto">
+                        <!-- Options panel (hidden by default) -->
                         <div id="analysis-options-panel"
-                            class="hidden absolute bottom-full left-0 right-0 mb-4 p-4 bg-surface rounded-3xl border border-white/5 shadow-xl animate-fade-in-up z-10">
-                            <div class="flex flex-wrap gap-4 justify-center">
-                                <label class="flex items-center gap-2 cursor-pointer select-none">
-                                    <input type="checkbox" class="analysis-checkbox accent-primary w-4 h-4 rounded-full"
-                                        value="Technical Analysis" checked>
-                                    <span class="text-sm text-secondary" data-i18n="chat.technical">Technical</span>
-                                </label>
-                                <label class="flex items-center gap-2 cursor-pointer select-none">
-                                    <input type="checkbox" class="analysis-checkbox accent-primary w-4 h-4 rounded-full"
-                                        value="News Analysis" checked>
-                                    <span class="text-sm text-secondary" data-i18n="chat.news">News</span>
-                                </label>
+                            class="hidden absolute bottom-full left-0 right-0 mb-2 p-3 bg-surface rounded-2xl border border-white/8 shadow-xl animate-fade-in-up z-10">
+                            <div class="flex flex-wrap gap-3 items-center justify-between">
+                                <div class="flex gap-3">
+                                    <label class="flex items-center gap-1.5 cursor-pointer select-none">
+                                        <input type="checkbox" class="analysis-checkbox accent-primary w-3.5 h-3.5"
+                                            value="Technical Analysis" checked>
+                                        <span class="text-xs text-textMuted" data-i18n="chat.technical">Technical</span>
+                                    </label>
+                                    <label class="flex items-center gap-1.5 cursor-pointer select-none">
+                                        <input type="checkbox" class="analysis-checkbox accent-primary w-3.5 h-3.5"
+                                            value="News Analysis" checked>
+                                        <span class="text-xs text-textMuted" data-i18n="chat.news">News</span>
+                                    </label>
+                                </div>
+                                <label for="analysis-mode-select" class="sr-only">分析模式</label>
+                                <select id="analysis-mode-select"
+                                    class="h-7 px-2 rounded-lg bg-white/5 border border-white/10 text-xs text-textMuted focus:outline-none">
+                                    <option value="quick">Quick</option>
+                                    <option value="verified">Verified</option>
+                                    <option value="research">Research</option>
+                                </select>
                             </div>
                         </div>
 
-                        <!-- Input Box -->
-                        <div
-                            class="bg-surface/90 border border-white/10 rounded-[2rem] p-2 flex items-center gap-2 shadow-xl focus-within:ring-1 focus-within:ring-primary/50">
-                            <label for="analysis-mode-select" class="sr-only">分析模式</label>
-                            <select id="analysis-mode-select"
-                                class="h-10 px-3 rounded-full bg-white/5 border border-white/10 text-xs text-textMuted focus:outline-none focus:ring-1 focus:ring-primary/40">
-                                <option value="quick">Quick</option>
-                                <option value="verified">Verified</option>
-                                <option value="research">Research</option>
-                            </select>
-                            <button onclick="toggleOptions()" aria-label="顯示選項"
-                                class="w-10 h-10 rounded-full hover:bg-white/5 flex items-center justify-center text-textMuted hover:text-primary transition">
-                                <i data-lucide="plus" class="w-5 h-5"></i>
+                        <!-- Main input row -->
+                        <div class="flex items-end gap-2">
+                            <button onclick="toggleOptions()" aria-label="選項"
+                                class="w-8 h-8 mb-0.5 rounded-full hover:bg-white/8 flex items-center justify-center text-textMuted/60 hover:text-primary transition flex-shrink-0">
+                                <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
                             </button>
-                            <label for="user-input" class="sr-only">輸入訊息</label>
-                            <input type="text" id="user-input" disabled aria-label="輸入訊息"
-                                class="flex-1 bg-transparent border-none outline-none text-base text-secondary placeholder-textMuted/50 px-2 font-light relative z-10 opacity-50 cursor-not-allowed"
-                                placeholder="Send a command to AI Agent..."
-                                autocomplete="off"
-                                onkeypress="if(event.key === 'Enter') sendMessage()">
-                            <button onclick="sendMessage()" id="send-btn" disabled aria-label="發送訊息"
-                                class="w-10 h-10 rounded-full bg-gradient-to-r from-primary to-accent text-background flex items-center justify-center hover:scale-105 active:scale-95 transition shadow-lg shadow-primary/20 opacity-50 cursor-not-allowed">
-                                <i data-lucide="arrow-up" class="w-5 h-5"></i>
+                            <div class="flex-1 bg-surface/80 border border-white/10 rounded-2xl px-4 py-2.5 flex items-center gap-2 focus-within:border-primary/40 focus-within:bg-surface transition-all shadow-lg">
+                                <label for="user-input" class="sr-only">輸入訊息</label>
+                                <input type="text" id="user-input" disabled aria-label="輸入訊息"
+                                    class="flex-1 bg-transparent border-none outline-none text-sm text-secondary placeholder-textMuted/40 font-normal opacity-50 cursor-not-allowed"
+                                    placeholder="Send a command to AI Agent..."
+                                    autocomplete="off"
+                                    onkeypress="if(event.key === 'Enter') sendMessage()">
+                            </div>
+                            <button onclick="sendMessage()" id="send-btn" disabled aria-label="發送"
+                                class="w-9 h-9 mb-0.5 rounded-full bg-gradient-to-br from-primary to-accent text-white flex items-center justify-center hover:brightness-110 active:scale-95 transition shadow-lg shadow-primary/25 opacity-50 cursor-not-allowed flex-shrink-0">
+                                <i data-lucide="arrow-up" class="w-4 h-4"></i>
                             </button>
                         </div>
                     </div>

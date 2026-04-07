@@ -381,9 +381,24 @@ window.MessageComponents = MessageComponents;
 
 function appendMessage(role, content) {
     const container = document.getElementById('chat-messages');
+
+    // row wrapper
+    const row = document.createElement('div');
     const div = document.createElement('div');
-    // 使用 bot-bubble 取代原本的 bot-message 來套用背景框，bot-message 則保持透明
-    div.className = `message-bubble ${role === 'user' ? 'user-message' : 'bot-bubble prose'}`;
+
+    if (role === 'user') {
+        row.className = 'user-row';
+        div.className = 'message-bubble user-message';
+        row.appendChild(div);
+    } else {
+        row.className = 'bot-bubble-row';
+        const avatar = document.createElement('div');
+        avatar.className = 'bot-avatar';
+        avatar.textContent = 'AI';
+        div.className = 'message-bubble bot-bubble prose';
+        row.appendChild(avatar);
+        row.appendChild(div);
+    }
 
     if (role === 'bot') {
         // BUG FIX: 檢查 md 對象是否存在且 render 方法可用
@@ -436,7 +451,7 @@ function appendMessage(role, content) {
         div.textContent = content;
     }
 
-    container.appendChild(div);
+    container.appendChild(row);
     container.scrollTop = container.scrollHeight;
     return div;
 }

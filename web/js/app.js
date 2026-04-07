@@ -350,8 +350,14 @@ async function checkApiKeyStatus() {
                         settings.primary_model_name
                     );
                 }
-                currentProvider = await window.APIKeyManager.getCurrentProvider();
-                hasLlmKey = !!currentProvider;
+                // settings.primary_model_provider 存在代表用戶已設過 key，直接信任
+                currentProvider = settings.primary_model_provider;
+                hasLlmKey = true;
+                // 嘗試二次驗證，但不覆蓋已確認的結果
+                try {
+                    const verified = await window.APIKeyManager.getCurrentProvider();
+                    if (verified) currentProvider = verified;
+                } catch (_) {}
             }
         }
     } catch (e) {
