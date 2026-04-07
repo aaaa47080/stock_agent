@@ -909,8 +909,8 @@ nav.sticky {
         left: 0 !important;
         right: 0 !important;
         bottom: 0 !important;
-        padding: 0.625rem 0.75rem;
-        padding-bottom: calc(4rem + var(--mobile-safe-bottom) + var(--chat-keyboard-offset));
+        padding: 0.5rem 0.75rem;
+        padding-bottom: calc(0.5rem + var(--mobile-safe-bottom) + var(--chat-keyboard-offset));
     }
 
     [data-shell-fixed-input] > div {

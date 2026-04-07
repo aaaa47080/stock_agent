@@ -136,11 +136,6 @@ window.Components.settings = `
                         </div>
                     </div>
 
-                    <div class="mb-5 rounded-2xl border border-primary/10 bg-primary/5 px-4 py-3">
-                        <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary/80">建議流程</p>
-                        <p class="mt-2 text-sm leading-6 text-textMuted">1. 選擇供應商  2. 選擇模型  3. 輸入 API 金鑰  4. 測試連線  5. 儲存設定</p>
-                    </div>
-
                     <div class="space-y-5">
                         <div class="space-y-2">
                             <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2" data-i18n="settings.ai.provider">Provider</label>
