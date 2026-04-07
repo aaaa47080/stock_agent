@@ -13,41 +13,46 @@ const INStockTab = {
 
     AVAILABLE_SYMBOLS: [
         // 能源 / 石化
-        { symbol: 'RELIANCE.NS',   name: '信實工業 Reliance',          group: '能源/石化' },
-        { symbol: 'ONGC.NS',       name: '國家石油 ONGC',              group: '能源/石化' },
-        { symbol: 'NTPC.NS',       name: '國家電力 NTPC',              group: '能源/石化' },
+        { symbol: 'RELIANCE.NS',   name: '信實工業 Reliance',          name_zh: '信實工業',   name_en: 'Reliance',          group: '能源/石化' },
+        { symbol: 'ONGC.NS',       name: '國家石油 ONGC',              name_zh: '國家石油',   name_en: 'ONGC',              group: '能源/石化' },
+        { symbol: 'NTPC.NS',       name: '國家電力 NTPC',              name_zh: '國家電力',   name_en: 'NTPC',              group: '能源/石化' },
         // 資訊科技
-        { symbol: 'TCS.NS',        name: '塔塔顧問 TCS',               group: '資訊科技' },
-        { symbol: 'INFY.NS',       name: '印孚瑟斯 Infosys',           group: '資訊科技' },
-        { symbol: 'WIPRO.NS',      name: '威普羅 Wipro',               group: '資訊科技' },
-        { symbol: 'HCLTECH.NS',    name: 'HCL Technologies',           group: '資訊科技' },
-        { symbol: 'TECHM.NS',      name: '科技馬辛德拉 Tech Mahindra', group: '資訊科技' },
+        { symbol: 'TCS.NS',        name: '塔塔顧問 TCS',               name_zh: '塔塔顧問',   name_en: 'TCS',               group: '資訊科技' },
+        { symbol: 'INFY.NS',       name: '印孚瑟斯 Infosys',           name_zh: '印孚瑟斯',   name_en: 'Infosys',           group: '資訊科技' },
+        { symbol: 'WIPRO.NS',      name: '威普羅 Wipro',               name_zh: '威普羅',     name_en: 'Wipro',             group: '資訊科技' },
+        { symbol: 'HCLTECH.NS',    name: 'HCL Technologies',           name_zh: 'HCL Technologies', name_en: 'HCL Technologies', group: '資訊科技' },
+        { symbol: 'TECHM.NS',      name: '科技馬辛德拉 Tech Mahindra', name_zh: '科技馬辛德拉', name_en: 'Tech Mahindra',   group: '資訊科技' },
         // 金融 / 銀行
-        { symbol: 'HDFCBANK.NS',   name: 'HDFC 銀行',                  group: '金融/銀行' },
-        { symbol: 'ICICIBANK.NS',  name: 'ICICI 銀行',                 group: '金融/銀行' },
-        { symbol: 'SBIN.NS',       name: '印度國家銀行 SBI',           group: '金融/銀行' },
-        { symbol: 'KOTAKBANK.NS',  name: '科塔克銀行 Kotak',           group: '金融/銀行' },
-        { symbol: 'AXISBANK.NS',   name: 'Axis 銀行',                  group: '金融/銀行' },
+        { symbol: 'HDFCBANK.NS',   name: 'HDFC 銀行',                  name_zh: 'HDFC 銀行',  name_en: 'HDFC Bank',         group: '金融/銀行' },
+        { symbol: 'ICICIBANK.NS',  name: 'ICICI 銀行',                 name_zh: 'ICICI 銀行', name_en: 'ICICI Bank',        group: '金融/銀行' },
+        { symbol: 'SBIN.NS',       name: '印度國家銀行 SBI',           name_zh: '印度國家銀行', name_en: 'SBI',             group: '金融/銀行' },
+        { symbol: 'KOTAKBANK.NS',  name: '科塔克銀行 Kotak',           name_zh: '科塔克銀行', name_en: 'Kotak Bank',        group: '金融/銀行' },
+        { symbol: 'AXISBANK.NS',   name: 'Axis 銀行',                  name_zh: 'Axis 銀行',  name_en: 'Axis Bank',         group: '金融/銀行' },
         // 消費 / 零售
-        { symbol: 'HINDUNILVR.NS', name: '聯合利華印度 HUL',           group: '消費/零售' },
-        { symbol: 'ITC.NS',        name: 'ITC',                        group: '消費/零售' },
-        { symbol: 'ASIANPAINT.NS', name: '亞洲塗料 Asian Paints',      group: '消費/零售' },
-        { symbol: 'TITAN.NS',      name: '泰坦公司 Titan',             group: '消費/零售' },
+        { symbol: 'HINDUNILVR.NS', name: '聯合利華印度 HUL',           name_zh: '聯合利華印度', name_en: 'HUL',             group: '消費/零售' },
+        { symbol: 'ITC.NS',        name: 'ITC',                        name_zh: 'ITC',        name_en: 'ITC',               group: '消費/零售' },
+        { symbol: 'ASIANPAINT.NS', name: '亞洲塗料 Asian Paints',      name_zh: '亞洲塗料',   name_en: 'Asian Paints',      group: '消費/零售' },
+        { symbol: 'TITAN.NS',      name: '泰坦公司 Titan',             name_zh: '泰坦公司',   name_en: 'Titan',             group: '消費/零售' },
         // 汽車
-        { symbol: 'TATAMOTORS.NS', name: '塔塔汽車 Tata Motors',       group: '汽車' },
-        { symbol: 'MARUTI.NS',     name: '馬魯蒂 Maruti Suzuki',       group: '汽車' },
-        { symbol: 'M&M.NS',        name: '馬辛德拉 Mahindra',          group: '汽車' },
+        { symbol: 'TATAMOTORS.NS', name: '塔塔汽車 Tata Motors',       name_zh: '塔塔汽車',   name_en: 'Tata Motors',       group: '汽車' },
+        { symbol: 'MARUTI.NS',     name: '馬魯蒂 Maruti Suzuki',       name_zh: '馬魯蒂',     name_en: 'Maruti Suzuki',     group: '汽車' },
+        { symbol: 'M&M.NS',        name: '馬辛德拉 Mahindra',          name_zh: '馬辛德拉',   name_en: 'Mahindra',          group: '汽車' },
         // 製藥 / 醫療
-        { symbol: 'SUNPHARMA.NS',  name: '太陽製藥 Sun Pharma',        group: '製藥/醫療' },
-        { symbol: 'DRREDDY.NS',    name: "雷迪博士 Dr. Reddy's",       group: '製藥/醫療' },
+        { symbol: 'SUNPHARMA.NS',  name: '太陽製藥 Sun Pharma',        name_zh: '太陽製藥',   name_en: 'Sun Pharma',        group: '製藥/醫療' },
+        { symbol: 'DRREDDY.NS',    name: "雷迪博士 Dr. Reddy's",       name_zh: '雷迪博士',   name_en: "Dr. Reddy's",       group: '製藥/醫療' },
         // 電信
-        { symbol: 'BHARTIARTL.NS', name: '巴帝電信 Airtel',            group: '電信' },
+        { symbol: 'BHARTIARTL.NS', name: '巴帝電信 Airtel',            name_zh: '巴帝電信',   name_en: 'Airtel',            group: '電信' },
         // 鋼鐵 / 金屬
-        { symbol: 'TATASTEEL.NS',  name: '塔塔鋼鐵 Tata Steel',        group: '鋼鐵/金屬' },
-        { symbol: 'JSWSTEEL.NS',   name: 'JSW 鋼鐵',                   group: '鋼鐵/金屬' },
+        { symbol: 'TATASTEEL.NS',  name: '塔塔鋼鐵 Tata Steel',        name_zh: '塔塔鋼鐵',   name_en: 'Tata Steel',        group: '鋼鐵/金屬' },
+        { symbol: 'JSWSTEEL.NS',   name: 'JSW 鋼鐵',                   name_zh: 'JSW 鋼鐵',   name_en: 'JSW Steel',         group: '鋼鐵/金屬' },
         // ETF
-        { symbol: 'NIFTYBEES.NS',  name: 'Nifty50 ETF (Nippon)',       group: 'ETF' },
+        { symbol: 'NIFTYBEES.NS',  name: 'Nifty50 ETF (Nippon)',       name_zh: 'Nifty50 ETF (Nippon)', name_en: 'Nifty50 ETF (Nippon)', group: 'ETF' },
     ],
+    getStockName(item) {
+        const lang = window.I18n?.getLanguage?.() || 'zh-TW';
+        if (lang === 'en') return item.name_en || item.name || '';
+        return item.name_zh || item.name || '';
+    },
     STORAGE_KEY: 'instock_selected_symbols',
     DEFAULT_SELECTED: [
         'RELIANCE.NS', 'TCS.NS', 'HDFCBANK.NS', 'INFY.NS',
@@ -88,7 +93,7 @@ const INStockTab = {
                             ${syms.map(s => `
                                 <label class="flex items-center justify-between bg-surface border ${selected.has(s.symbol) ? 'border-primary/40 bg-primary/5' : 'border-white/5'} rounded-xl px-4 py-3 cursor-pointer hover:border-primary/30 transition">
                                     <div>
-                                        <span class="text-sm font-bold text-secondary">${escapeHtml(s.name)}</span>
+                                        <span class="text-sm font-bold text-secondary">${escapeHtml(window.I18n?.getLanguage?.() === 'en' ? (s.name_en || s.name) : (s.name_zh || s.name))}</span>
                                         <span class="text-xs text-textMuted ml-2">${s.symbol}</span>
                                     </div>
                                     <input type="checkbox" value="${s.symbol}" ${selected.has(s.symbol) ? 'checked' : ''}
@@ -122,6 +127,9 @@ const INStockTab = {
     },
 
     init() {
+        window.addEventListener('languageChanged', () => {
+            if (this.activeSubTab === 'market') this.renderMarket();
+        });
         if (window.MarketStatus) {
             window.MarketStatus.startMarketAutoRefresh(
                 'instock',
@@ -187,7 +195,7 @@ const INStockTab = {
                         <div class="flex-1 min-w-0">
                             <div class="flex items-start justify-between gap-2">
                                 <div class="min-w-0">
-                                    <div class="font-bold text-sm text-secondary leading-tight">${escapeHtml(item.name)}</div>
+                                    <div class="font-bold text-sm text-secondary leading-tight">${escapeHtml(this.getStockName(item))}</div>
                                     <div class="text-[9px] text-textMuted font-bold tracking-wider uppercase opacity-60">${symbol} · ${item.currency || 'INR'}</div>
                                 </div>
                                 <div class="text-right flex-shrink-0">
@@ -345,6 +353,50 @@ const INStockTab = {
             this.chartInstance = null;
             this.chartSeries = null;
         }
+    },
+
+    addStock: async function(symbol) {
+        if (!symbol) return;
+        const sym = symbol.toUpperCase().trim();
+        if (!sym) return;
+
+        const active = this.getActiveSymbols();
+        if (active.includes(sym)) {
+            if (window.showToast) window.showToast(`${sym} 已在自選清單`, 'info');
+            const input = document.getElementById('instock-add-input');
+            if (input) input.value = '';
+            return;
+        }
+
+        const input = document.getElementById('instock-add-input');
+        const btn = input ? input.nextElementSibling : null;
+        let originalIcon = '';
+        if (btn) { originalIcon = btn.innerHTML; btn.innerHTML = '<div class="w-4 h-4 border-2 border-primary/50 border-t-primary rounded-full animate-spin"></div>'; btn.disabled = true; }
+
+        try {
+            const data = await AppAPI.get(`/api/instock/market?symbols=${encodeURIComponent(sym)}`);
+            if (data.stocks && data.stocks.length > 0) {
+                active.unshift(sym);
+                this._saveActiveSymbols(active);
+                this.renderMarket();
+                if (window.showToast) window.showToast(`已加入 ${sym}`, 'success');
+            } else {
+                if (window.showToast) window.showToast(`找不到 ${sym}，請確認代碼`, 'error');
+            }
+        } catch(e) {
+            if (window.showToast) window.showToast('查詢失敗：' + e.message, 'error');
+        } finally {
+            if (btn) { btn.innerHTML = originalIcon; btn.disabled = false; }
+            if (input) input.value = '';
+        }
+    },
+
+    removeStock: function(symbol, event) {
+        if (event) event.stopPropagation();
+        const active = this.getActiveSymbols().filter(s => s !== symbol);
+        if (active.length === 0) { if (window.showToast) window.showToast('至少保留一個標的', 'error'); return; }
+        this._saveActiveSymbols(active);
+        this.renderMarket();
     },
 };
 

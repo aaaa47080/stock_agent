@@ -731,6 +731,16 @@
                             <h2 class="font-serif text-3xl text-secondary">韓股市場</h2>
                             <div class="flex items-center gap-2">
                                 <span id="krstock-last-updated" class="text-xs text-textMuted"></span>
+                                <div class="relative">
+                                    <input type="text" id="krstock-add-input" placeholder="代碼" maxlength="12"
+                                        oninput="this.value = this.value.toUpperCase()"
+                                        onkeypress="if(event.key==='Enter') KRStockTab.addStock(this.value)"
+                                        class="w-24 bg-background/50 border border-white/10 rounded-lg pl-2 pr-7 py-1 text-xs focus:outline-none focus:border-primary transition-colors text-white placeholder-textMuted/50">
+                                    <button onclick="KRStockTab.addStock(document.getElementById('krstock-add-input').value)"
+                                        class="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 text-textMuted hover:text-primary transition-colors">
+                                        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                                    </button>
+                                </div>
                                 <button onclick="KRStockTab.showPicker()" title="自選標的"
                                     class="p-2 bg-surface hover:bg-surfaceHighlight rounded-full text-textMuted transition">
                                     <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
