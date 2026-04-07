@@ -43,41 +43,41 @@ _YF_HEADERS = {
 }
 
 # ── Curated JP stock name table ────────────────────────────────────────────────
-_JP_STOCK_NAMES: dict[str, str] = {
+_JP_STOCK_NAMES: dict[str, dict] = {
     # 汽車
-    "7203.T": "豐田汽車 Toyota",
-    "7267.T": "本田 Honda",
-    "7201.T": "日產 Nissan",
-    "7269.T": "鈴木 Suzuki",
-    "7270.T": "速霸陸 Subaru",
+    "7203.T": {"zh": "豐田汽車", "en": "Toyota"},
+    "7267.T": {"zh": "本田", "en": "Honda"},
+    "7201.T": {"zh": "日產", "en": "Nissan"},
+    "7269.T": {"zh": "鈴木", "en": "Suzuki"},
+    "7270.T": {"zh": "速霸陸", "en": "Subaru"},
     # 科技 / 電子
-    "6758.T": "索尼 Sony",
-    "6861.T": "基恩士 Keyence",
-    "6501.T": "日立 Hitachi",
-    "6752.T": "松下 Panasonic",
-    "6702.T": "富士通 Fujitsu",
-    "6723.T": "瑞薩電子 Renesas",
+    "6758.T": {"zh": "索尼", "en": "Sony"},
+    "6861.T": {"zh": "基恩士", "en": "Keyence"},
+    "6501.T": {"zh": "日立", "en": "Hitachi"},
+    "6752.T": {"zh": "松下", "en": "Panasonic"},
+    "6702.T": {"zh": "富士通", "en": "Fujitsu"},
+    "6723.T": {"zh": "瑞薩電子", "en": "Renesas"},
     # 半導體 / 設備
-    "8035.T": "東京威力科創 TEL",
-    "4063.T": "信越化學 Shin-Etsu",
+    "8035.T": {"zh": "東京威力科創", "en": "TEL"},
+    "4063.T": {"zh": "信越化學", "en": "Shin-Etsu"},
     # 金融
-    "8306.T": "三菱UFJ銀行 MUFG",
-    "8316.T": "三井住友 SMFG",
-    "8411.T": "瑞穗銀行 Mizuho",
-    "8604.T": "野村控股 Nomura",
+    "8306.T": {"zh": "三菱UFJ銀行", "en": "MUFG"},
+    "8316.T": {"zh": "三井住友", "en": "SMFG"},
+    "8411.T": {"zh": "瑞穗銀行", "en": "Mizuho"},
+    "8604.T": {"zh": "野村控股", "en": "Nomura"},
     # 零售 / 消費
-    "9983.T": "迅銷 Fast Retailing (Uniqlo)",
-    "2914.T": "日本菸草 JT",
-    "2802.T": "味之素 Ajinomoto",
-    "2503.T": "麒麟 Kirin",
+    "9983.T": {"zh": "迅銷", "en": "Fast Retailing (Uniqlo)"},
+    "2914.T": {"zh": "日本菸草", "en": "JT"},
+    "2802.T": {"zh": "味之素", "en": "Ajinomoto"},
+    "2503.T": {"zh": "麒麟", "en": "Kirin"},
     # 電信
-    "9432.T": "NTT",
-    "9433.T": "KDDI",
-    "9434.T": "軟銀 SoftBank",
+    "9432.T": {"zh": "NTT", "en": "NTT"},
+    "9433.T": {"zh": "KDDI", "en": "KDDI"},
+    "9434.T": {"zh": "軟銀", "en": "SoftBank"},
     # 醫療 / 製藥
-    "4502.T": "武田藥品 Takeda",
+    "4502.T": {"zh": "武田藥品", "en": "Takeda"},
     # ETF
-    "1306.T": "TOPIX ETF (野村)",
+    "1306.T": {"zh": "TOPIX ETF (野村)", "en": "TOPIX ETF (Nomura)"},
 }
 
 DEFAULT_JP_SYMBOLS = [
@@ -107,10 +107,19 @@ async def _fetch_quote_v8(client: httpx.AsyncClient, symbol: str) -> dict | None
         prev  = float(meta.get("chartPreviousClose") or meta.get("previousClose") or price)
         change = round(price - prev, 1)
         change_pct = round((change / prev) * 100, 2) if prev else 0.0
-        display_name = _JP_STOCK_NAMES.get(symbol) or meta.get("shortName") or symbol
+        names = _JP_STOCK_NAMES.get(symbol)
+        if names:
+            name_zh = names["zh"]
+            name_en = names["en"]
+        else:
+            fallback = meta.get("shortName") or symbol
+            name_zh = fallback
+            name_en = fallback
         return {
             "symbol": symbol,
-            "name": display_name,
+            "name": name_zh,       # backward compat
+            "name_zh": name_zh,
+            "name_en": name_en,
             "price": price,
             "change": change,
             "changePercent": change_pct,
@@ -337,3 +346,35 @@ async def get_jp_klines(symbol: str, interval: str = "1d", limit: int = 200):
     result_data = {"symbol": sym, "interval": interval, "data": klines}
     _set_cache(cache_key, result_data, ttl=300)
     return result_data
+
+
+@router.get("/search")
+async def search_jp_stocks(q: str):
+    """Search Japanese stocks via Yahoo Finance search API."""
+    if not q or len(q.strip()) < 1:
+        return {"results": []}
+    try:
+        url = "https://query1.finance.yahoo.com/v1/finance/search"
+        params = {
+            "q": q,
+            "lang": "en-US",
+            "region": "US",
+            "quotesCount": 10,
+            "newsCount": 0,
+            "enableFuzzyQuery": False,
+            "quotesQueryId": "tss_match_phrase_query",
+        }
+        async with httpx.AsyncClient(timeout=8, headers=_YF_HEADERS) as client:
+            resp = await client.get(url, params=params)
+            resp.raise_for_status()
+            data = resp.json()
+        quotes = data.get("quotes", [])
+        results = [
+            {"symbol": q["symbol"], "name": q.get("shortname") or q.get("longname") or q["symbol"]}
+            for q in quotes
+            if q.get("symbol", "").endswith(".T") and q.get("quoteType") in ("EQUITY", "ETF", "MUTUALFUND")
+        ]
+        return {"results": results}
+    except Exception as e:
+        logger.warning(f"[jpstock] search failed: {e}")
+        return {"results": []}

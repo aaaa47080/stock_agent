@@ -42,42 +42,42 @@ _YF_HEADERS = {
 }
 
 # ── Curated India stock name table ─────────────────────────────────────────────
-_IN_STOCK_NAMES: dict[str, str] = {
+_IN_STOCK_NAMES: dict[str, dict] = {
     # 能源 / 石化
-    "RELIANCE.NS":     "信實工業 Reliance",
-    "ONGC.NS":         "國家石油 ONGC",
-    "NTPC.NS":         "國家電力 NTPC",
+    "RELIANCE.NS":     {"zh": "信實工業", "en": "Reliance"},
+    "ONGC.NS":         {"zh": "國家石油", "en": "ONGC"},
+    "NTPC.NS":         {"zh": "國家電力", "en": "NTPC"},
     # 資訊科技
-    "TCS.NS":          "塔塔顧問 TCS",
-    "INFY.NS":         "印孚瑟斯 Infosys",
-    "WIPRO.NS":        "威普羅 Wipro",
-    "HCLTECH.NS":      "HCL Technologies",
-    "TECHM.NS":        "科技馬辛德拉 Tech Mahindra",
+    "TCS.NS":          {"zh": "塔塔顧問", "en": "TCS"},
+    "INFY.NS":         {"zh": "印孚瑟斯", "en": "Infosys"},
+    "WIPRO.NS":        {"zh": "威普羅", "en": "Wipro"},
+    "HCLTECH.NS":      {"zh": "HCL Technologies", "en": "HCL Technologies"},
+    "TECHM.NS":        {"zh": "科技馬辛德拉", "en": "Tech Mahindra"},
     # 金融 / 銀行
-    "HDFCBANK.NS":     "HDFC 銀行",
-    "ICICIBANK.NS":    "ICICI 銀行",
-    "SBIN.NS":         "印度國家銀行 SBI",
-    "KOTAKBANK.NS":    "科塔克銀行 Kotak",
-    "AXISBANK.NS":     "Axis 銀行",
+    "HDFCBANK.NS":     {"zh": "HDFC 銀行", "en": "HDFC Bank"},
+    "ICICIBANK.NS":    {"zh": "ICICI 銀行", "en": "ICICI Bank"},
+    "SBIN.NS":         {"zh": "印度國家銀行", "en": "SBI"},
+    "KOTAKBANK.NS":    {"zh": "科塔克銀行", "en": "Kotak Bank"},
+    "AXISBANK.NS":     {"zh": "Axis 銀行", "en": "Axis Bank"},
     # 消費 / 零售
-    "HINDUNILVR.NS":   "聯合利華印度 HUL",
-    "ITC.NS":          "ITC",
-    "ASIANPAINT.NS":   "亞洲塗料 Asian Paints",
-    "TITAN.NS":        "泰坦公司 Titan",
+    "HINDUNILVR.NS":   {"zh": "聯合利華印度", "en": "HUL"},
+    "ITC.NS":          {"zh": "ITC", "en": "ITC"},
+    "ASIANPAINT.NS":   {"zh": "亞洲塗料", "en": "Asian Paints"},
+    "TITAN.NS":        {"zh": "泰坦公司", "en": "Titan"},
     # 汽車
-    "TATAMOTORS.NS":   "塔塔汽車 Tata Motors",
-    "MARUTI.NS":       "馬魯蒂 Maruti Suzuki",
-    "M&M.NS":          "馬辛德拉 Mahindra",
+    "TATAMOTORS.NS":   {"zh": "塔塔汽車", "en": "Tata Motors"},
+    "MARUTI.NS":       {"zh": "馬魯蒂", "en": "Maruti Suzuki"},
+    "M&M.NS":          {"zh": "馬辛德拉", "en": "Mahindra"},
     # 製藥 / 醫療
-    "SUNPHARMA.NS":    "太陽製藥 Sun Pharma",
-    "DRREDDY.NS":      "雷迪博士 Dr. Reddy's",
+    "SUNPHARMA.NS":    {"zh": "太陽製藥", "en": "Sun Pharma"},
+    "DRREDDY.NS":      {"zh": "雷迪博士", "en": "Dr. Reddy's"},
     # 電信
-    "BHARTIARTL.NS":   "巴帝電信 Airtel",
+    "BHARTIARTL.NS":   {"zh": "巴帝電信", "en": "Airtel"},
     # 鋼鐵 / 金屬
-    "TATASTEEL.NS":    "塔塔鋼鐵 Tata Steel",
-    "JSWSTEEL.NS":     "JSW 鋼鐵",
+    "TATASTEEL.NS":    {"zh": "塔塔鋼鐵", "en": "Tata Steel"},
+    "JSWSTEEL.NS":     {"zh": "JSW 鋼鐵", "en": "JSW Steel"},
     # ETF
-    "NIFTYBEES.NS":    "Nifty50 ETF (Nippon)",
+    "NIFTYBEES.NS":    {"zh": "Nifty50 ETF", "en": "Nifty50 ETF (Nippon)"},
 }
 
 DEFAULT_IN_SYMBOLS = [
@@ -104,10 +104,19 @@ async def _fetch_quote_v8(client: httpx.AsyncClient, symbol: str) -> dict | None
         prev  = float(meta.get("chartPreviousClose") or meta.get("previousClose") or price)
         change = round(price - prev, 2)
         change_pct = round((change / prev) * 100, 2) if prev else 0.0
-        display_name = _IN_STOCK_NAMES.get(symbol) or meta.get("shortName") or symbol
+        names = _IN_STOCK_NAMES.get(symbol)
+        if names:
+            name_zh = names["zh"]
+            name_en = names["en"]
+        else:
+            fallback = meta.get("shortName") or symbol
+            name_zh = fallback
+            name_en = fallback
         return {
             "symbol": symbol,
-            "name": display_name,
+            "name": name_zh,       # backward compat
+            "name_zh": name_zh,
+            "name_en": name_en,
             "price": price,
             "change": change,
             "changePercent": change_pct,
@@ -329,3 +338,36 @@ async def get_in_klines(symbol: str, interval: str = "1d", limit: int = 200):
     result_data = {"symbol": sym, "interval": interval, "data": klines}
     _set_cache(cache_key, result_data, ttl=300)
     return result_data
+
+
+@router.get("/search")
+async def search_in_stocks(q: str):
+    """Search Indian stocks via Yahoo Finance search API."""
+    if not q or len(q.strip()) < 1:
+        return {"results": []}
+    try:
+        url = "https://query1.finance.yahoo.com/v1/finance/search"
+        params = {
+            "q": q,
+            "lang": "en-US",
+            "region": "US",
+            "quotesCount": 10,
+            "newsCount": 0,
+            "enableFuzzyQuery": False,
+            "quotesQueryId": "tss_match_phrase_query",
+        }
+        async with httpx.AsyncClient(timeout=8, headers=_YF_HEADERS) as client:
+            resp = await client.get(url, params=params)
+            resp.raise_for_status()
+            data = resp.json()
+        quotes = data.get("quotes", [])
+        results = [
+            {"symbol": q["symbol"], "name": q.get("shortname") or q.get("longname") or q["symbol"]}
+            for q in quotes
+            if (q.get("symbol", "").endswith(".NS") or q.get("symbol", "").endswith(".BO"))
+            and q.get("quoteType") in ("EQUITY", "ETF", "MUTUALFUND")
+        ]
+        return {"results": results}
+    except Exception as e:
+        logger.warning(f"[instock] search failed: {e}")
+        return {"results": []}
