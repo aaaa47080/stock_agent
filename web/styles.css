@@ -908,8 +908,9 @@ nav.sticky {
     [data-shell-fixed-input] {
         left: 0 !important;
         right: 0 !important;
-        bottom: calc(var(--mobile-nav-clearance) + var(--chat-keyboard-offset)) !important;
-        padding: 0.75rem 0.75rem calc(0.75rem + var(--mobile-safe-bottom));
+        bottom: 0 !important;
+        padding: 0.625rem 0.75rem;
+        padding-bottom: calc(var(--mobile-nav-clearance) + var(--chat-keyboard-offset) + 0.5rem);
     }
 
     [data-shell-fixed-input] > div {

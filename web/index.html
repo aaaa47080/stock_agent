@@ -208,28 +208,18 @@
                     </div>
                 </div>
 
-                <!-- Warning Overlay (No Key) - 預設隱藏，待 Auth + API Key 狀態確認後再顯示 -->
+                <!-- Warning Overlay (No Key) — 改為底部小提示條，不遮擋內容 -->
                 <div id="no-llm-key-warning"
-                    class="hidden absolute top-0 left-0 right-0 bottom-32 flex items-center justify-center z-40 p-4 bg-background/80 backdrop-blur-sm">
-                    <div
-                        class="bg-surface/95 backdrop-blur-xl rounded-3xl p-8 border border-white/10 shadow-2xl max-w-sm w-full text-center">
-                        <div
-                            class="w-14 h-14 bg-gradient-to-r from-primary to-accent rounded-full flex items-center justify-center mx-auto mb-4 text-white shadow-lg shadow-primary/30">
-                            <i data-lucide="key" class="w-7 h-7"></i>
+                    class="hidden absolute bottom-0 left-0 right-0 z-30 px-4 pb-2">
+                    <div class="max-w-3xl mx-auto">
+                        <div class="flex items-center gap-3 bg-surface/90 backdrop-blur-md border border-amber-500/20 rounded-2xl px-4 py-3 shadow-lg">
+                            <i data-lucide="key" class="w-4 h-4 text-amber-400 flex-shrink-0"></i>
+                            <p class="text-xs text-textMuted flex-1" data-i18n="chat.unlockDesc">Connect an API key to enable AI analysis.</p>
+                            <button onclick="switchTab('settings');"
+                                class="flex-shrink-0 px-3 py-1.5 bg-primary/15 hover:bg-primary/25 border border-primary/30 text-primary text-xs font-semibold rounded-xl transition whitespace-nowrap">
+                                <span data-i18n="chat.configureApiKey">Set API Key</span>
+                            </button>
                         </div>
-                        <h3 class="font-serif text-2xl mb-2 text-secondary" data-i18n="chat.unlockTitle">Unlock Pi
-                            Intelligence</h3>
-                        <p class="text-textMuted text-sm mb-6 leading-relaxed"><span data-i18n="chat.unlockDesc">Connect
-                                an API key to enable AI
-                                analysis.</span><br><span data-i18n="chat.unlockDesc2">Your keys are stored locally and
-                                securely.</span></p>
-                        <button onclick="switchTab('settings');"
-                            class="w-full py-3.5 bg-gradient-to-r from-primary to-accent text-background font-bold rounded-2xl hover:brightness-110 transition shadow-lg shadow-primary/20">
-                            <i data-lucide="settings" class="w-4 h-4 inline-block mr-2"></i>
-                            <span data-i18n="chat.configureApiKey">Configure API Key</span>
-                        </button>
-                        <p class="text-textMuted/60 text-xs mt-4" data-i18n="chat.otherFeatures">You can still use other
-                            features below</p>
                     </div>
                 </div>
 
