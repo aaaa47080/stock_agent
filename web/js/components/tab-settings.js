@@ -2,7 +2,7 @@
 // Tab: Settings - original lines 733-1100
 window.Components = window.Components || {};
 window.Components.settings = `
-    <div class="max-w-2xl mx-auto">
+    <div class="max-w-2xl mx-auto px-1 sm:px-0">
              <h2 class="font-serif text-3xl text-secondary mb-8" data-i18n="settings.title">Settings</h2>
 
              <div class="space-y-10">
@@ -121,8 +121,8 @@ window.Components.settings = `
                 </div>
 
                  <!-- LLM Configuration -->
-                <div class="bg-surface p-6 md:p-8 rounded-3xl border border-white/5">
-                    <div class="flex items-center justify-between mb-6">
+                <div id="settings-llm-card" class="bg-surface p-5 md:p-8 rounded-3xl border border-white/5 shadow-[0_20px_60px_rgba(0,0,0,0.18)]">
+                    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
                         <div class="${CARD_HEADER_ROW_CLASS}">
                             <div class="${HERO_ICON_BOX_CLASS}">
                                 <i data-lucide="brain" class="w-5 h-5 text-primary"></i>
@@ -132,37 +132,45 @@ window.Components.settings = `
                                 <p class="text-xs text-textMuted" data-i18n="settings.ai.description">Configure your LLM provider</p>
                             </div>
                         </div>
-                        <div id="llm-status-badge" class="${STATUS_BADGE_CLASS}">
+                        <div id="llm-status-badge" class="${STATUS_BADGE_CLASS} self-start sm:self-auto">
                         </div>
                     </div>
 
-                    <div class="space-y-6">
-                        <div>
+                    <div class="mb-5 rounded-2xl border border-primary/10 bg-primary/5 px-4 py-3">
+                        <p class="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary/80">建議流程</p>
+                        <p class="mt-2 text-sm leading-6 text-textMuted">1. 選擇供應商  2. 選擇模型  3. 輸入 API 金鑰  4. 測試連線  5. 儲存設定</p>
+                    </div>
+
+                    <div class="space-y-5">
+                        <div class="space-y-2">
                             <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2" data-i18n="settings.ai.provider">Provider</label>
-                            <select id="llm-provider-select" onchange="updateLLMKeyInput(); updateAvailableModels()" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3.5 text-secondary outline-none focus:border-primary/50 transition appearance-none">
+                            <select id="llm-provider-select" onchange="updateLLMKeyInput(); updateAvailableModels()" class="w-full bg-background border border-white/5 rounded-2xl px-4 py-3.5 text-secondary outline-none focus:border-primary/50 transition appearance-none">
                                 <option value="openai">OpenAI</option>
                                 <option value="google_gemini">Google Gemini</option>
                                 <option value="openrouter">OpenRouter</option>
                             </select>
+                            <p class="text-xs leading-5 text-textMuted/75">先選擇你要綁定的 AI 供應商，再決定要使用的模型。</p>
                         </div>
 
-                        <div>
-                            <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2" data-i18n="settings.ai.apiKey">API Key</label>
-                            <div class="flex gap-3">
-                                <input type="password" id="llm-api-key-input" class="flex-1 min-w-0 bg-background border border-white/5 rounded-xl px-4 py-3.5 text-secondary outline-none focus:border-primary/50 font-mono text-sm" placeholder="sk-...">
-                                <button id="test-llm-key-btn" onclick="testLLMKey()" class="shrink-0 min-w-[88px] px-5 bg-surfaceHighlight hover:bg-white/10 text-secondary rounded-xl transition font-bold text-xs whitespace-nowrap" data-i18n="settings.ai.test">TEST</button>
-                            </div>
-                        </div>
-
-                        <div>
+                        <div class="space-y-2">
                             <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2" data-i18n="settings.ai.model">Model</label>
-                            <select id="llm-model-select" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3.5 text-secondary outline-none focus:border-primary/50 transition appearance-none" style="display: block;">
+                            <select id="llm-model-select" class="w-full bg-background border border-white/5 rounded-2xl px-4 py-3.5 text-secondary outline-none focus:border-primary/50 transition appearance-none" style="display: block;">
                             <!-- Models loaded dynamically via updateAvailableModels() -->
                             </select>
-                            <input type="text" id="llm-model-input" class="w-full bg-background border border-white/5 rounded-xl px-4 py-3.5 text-sm text-secondary outline-none focus:border-primary/50 transition mt-3"
+                            <input type="text" id="llm-model-input" class="w-full bg-background border border-white/5 rounded-2xl px-4 py-3.5 text-sm text-secondary outline-none focus:border-primary/50 transition mt-3"
                                    placeholder="e.g., openai/gpt-4o, anthropic/claude-3.5-sonnet" data-i18n="settings.ai.modelPlaceholder" data-i18n-attr="placeholder"
                                    style="display: none;" />
-                            <p id="llm-key-status" class="mt-2 text-xs text-textMuted hidden"></p>
+                            <p id="llm-model-hint" class="text-xs leading-5 text-textMuted/75">先選模型，再輸入對應的 API 金鑰，流程會比較順。</p>
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="block text-xs font-bold text-textMuted uppercase tracking-wider mb-2" data-i18n="settings.ai.apiKey">API Key</label>
+                            <div class="flex flex-col gap-3 sm:flex-row">
+                                <input type="password" id="llm-api-key-input" class="flex-1 min-w-0 bg-background border border-white/5 rounded-2xl px-4 py-3.5 text-secondary outline-none focus:border-primary/50 font-mono text-sm disabled:cursor-not-allowed disabled:opacity-50" placeholder="sk-..." disabled>
+                                <button id="test-llm-key-btn" onclick="testLLMKey()" class="shrink-0 min-w-[104px] px-5 py-3.5 bg-surfaceHighlight hover:bg-white/10 text-secondary rounded-2xl transition font-bold text-xs whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed" disabled data-i18n="settings.ai.test">TEST</button>
+                            </div>
+                            <p id="llm-key-status" class="text-xs leading-5 text-textMuted/75">請先選擇供應商與模型，再輸入 API 金鑰。</p>
+                            <p id="llm-binding-status" class="text-xs leading-5 text-success hidden"></p>
                         </div>
 
                         <button id="save-llm-key-btn" onclick="saveLLMKey()" class="w-full py-3.5 bg-primary text-background font-bold rounded-xl shadow-lg shadow-primary/10 opacity-50 cursor-not-allowed transition mt-2" disabled data-i18n="settings.ai.saveConfig">

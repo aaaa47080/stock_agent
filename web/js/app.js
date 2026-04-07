@@ -788,7 +788,7 @@ async function updateAvailableModels(preloadedConfig = null) {
     if (!modelConfig) {
         try {
             const data = await AppAPI.get('/api/model-config');
-            modelConfig = data;
+            modelConfig = data?.model_config || data;
         } catch (e) {
             console.error('[updateAvailableModels] Failed to fetch model config:', e);
         }
@@ -800,6 +800,9 @@ async function updateAvailableModels(preloadedConfig = null) {
         if (modelInput) {
             modelInput.style.display = 'block';
             modelInput.placeholder = 'e.g., openai/gpt-4o, anthropic/claude-3.5-sonnet';
+        }
+        if (typeof window.updateLLMFormState === 'function') {
+            window.updateLLMFormState();
         }
         return;
     }
@@ -842,6 +845,10 @@ async function updateAvailableModels(preloadedConfig = null) {
         modelSelect.value = modelConfig[provider].default_model;
     } else if (models.length > 0) {
         modelSelect.value = models[0].value;
+    }
+
+    if (typeof window.updateLLMFormState === 'function') {
+        window.updateLLMFormState();
     }
 
     window.APP_CONFIG?.DEBUG_MODE &&

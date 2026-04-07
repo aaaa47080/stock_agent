@@ -951,6 +951,22 @@ nav.sticky {
         height: 2.75rem;
     }
 
+    #settings-tab {
+        padding-left: 0.75rem;
+        padding-right: 0.75rem;
+        padding-top: 1rem;
+    }
+
+    #settings-llm-card {
+        border-radius: 1.5rem;
+    }
+
+    #settings-llm-card #test-llm-key-btn,
+    #settings-llm-card #save-llm-key-btn,
+    #settings-tab button[onclick="FeatureMenu.open()"] {
+        min-height: 44px;
+    }
+
     html.chat-keyboard-open #global-nav-container {
         opacity: 0;
         pointer-events: none;
